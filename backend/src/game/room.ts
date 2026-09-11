@@ -8,12 +8,12 @@ import {
   rackSizeForPlayerCount,
   shuffle,
 } from "./tiles";
+import { clampMaxPlayers, touchActivity } from "./expire";
 import type {
   GameRoom,
   Language,
   MovePlacement,
   Player,
-  PlacedTile,
 } from "./types";
 
 export function generateRoomCode(): string {
@@ -25,7 +25,11 @@ export function generateRoomCode(): string {
   return code;
 }
 
-export function createRoom(language: Language, hostNickname: string): GameRoom {
+export function createRoom(
+  language: Language,
+  hostNickname: string,
+  maxPlayers: unknown = 2,
+): GameRoom {
   const hostToken = nanoid(16);
   const host: Player = {
     id: nanoid(8),
@@ -37,6 +41,7 @@ export function createRoom(language: Language, hostNickname: string): GameRoom {
 
   const bag = createTileBag(language);
   const { drawn, remaining } = drawTiles(bag, rackSizeForPlayerCount(1));
+  const createdAt = new Date().toISOString();
 
   return {
     code: generateRoomCode(),
@@ -47,7 +52,9 @@ export function createRoom(language: Language, hostNickname: string): GameRoom {
     bag: remaining,
     currentPlayerIndex: 0,
     hostPlayerId: host.id,
-    createdAt: new Date().toISOString(),
+    maxPlayers: clampMaxPlayers(maxPlayers),
+    createdAt,
+    lastMoveAt: createdAt,
   };
 }
 
@@ -55,7 +62,7 @@ export function joinRoom(room: GameRoom, nickname: string): { room: GameRoom; pl
   if (room.status !== "waiting") {
     return { error: "Game already started" };
   }
-  if (room.players.length >= 4) {
+  if (room.players.length >= (room.maxPlayers ?? 4)) {
     return { error: "Room is full" };
   }
   if (room.players.some((p) => p.nickname.toLowerCase() === nickname.toLowerCase())) {
@@ -74,11 +81,11 @@ export function joinRoom(room: GameRoom, nickname: string): { room: GameRoom; pl
   player.rack = drawn;
 
   return {
-    room: {
+    room: touchActivity({
       ...room,
       players: [...room.players, player],
       bag: remaining,
-    },
+    }),
     player,
   };
 }
@@ -102,12 +109,12 @@ export function startGame(room: GameRoom, playerId: string): GameRoom | { error:
     return { ...p, rack: [...p.rack, ...drawn] };
   });
 
-  return {
+  return touchActivity({
     ...room,
     status: "playing",
     players,
     currentPlayerIndex: 0,
-  };
+  });
 }
 
 export function getPlayerByToken(room: GameRoom, token: string): Player | undefined {
@@ -173,11 +180,11 @@ export function playTiles(
     return { ...p, rack: newRack, score: p.score + moveScore };
   });
 
-  const updatedRoom: GameRoom = {
+  const updatedRoom: GameRoom = touchActivity({
     ...room,
     board: newBoard,
     players: updatedPlayers,
-  };
+  });
 
   const currentPlayer = updatedPlayers.find((p) => p.id === playerId)!;
   refillRack(updatedRoom, currentPlayer);
@@ -196,10 +203,10 @@ export function passTurn(room: GameRoom, playerId: string): GameRoom | { error: 
   if (room.status !== "playing") return { error: "Game not in progress" };
   if (!isPlayerTurn(room, playerId)) return { error: "Not your turn" };
 
-  return {
+  return touchActivity({
     ...room,
     currentPlayerIndex: (room.currentPlayerIndex + 1) % room.players.length,
-  };
+  });
 }
 
 export function exchangeTiles(
@@ -228,12 +235,12 @@ export function exchangeTiles(
     p.id === playerId ? { ...p, rack: newRack } : p,
   );
 
-  return {
+  return touchActivity({
     ...room,
     bag: newBag,
     players: updatedPlayers,
     currentPlayerIndex: (room.currentPlayerIndex + 1) % room.players.length,
-  };
+  });
 }
 
 export function sanitizeRoomForClient(room: GameRoom, playerToken?: string): Record<string, unknown> {
@@ -244,6 +251,8 @@ export function sanitizeRoomForClient(room: GameRoom, playerToken?: string): Rec
     status: room.status,
     currentPlayerIndex: room.currentPlayerIndex,
     hostPlayerId: room.hostPlayerId,
+    maxPlayers: room.maxPlayers ?? 4,
+    lastMoveAt: room.lastMoveAt ?? room.createdAt,
     bagCount: room.bag.length,
     board: room.board,
     players: room.players.map((p) => ({

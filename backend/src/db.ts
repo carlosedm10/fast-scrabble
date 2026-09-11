@@ -39,6 +39,14 @@ export async function loadRoom(code: string): Promise<GameRoom | null> {
   return result.rows[0].state as GameRoom;
 }
 
+export async function listRoomsUpdatedBefore(cutoff: Date): Promise<GameRoom[]> {
+  const result = await pool.query(
+    `SELECT state FROM rooms WHERE updated_at < $1`,
+    [cutoff.toISOString()],
+  );
+  return result.rows.map((row) => row.state as GameRoom);
+}
+
 export async function deleteRoom(code: string): Promise<void> {
   await pool.query(`DELETE FROM rooms WHERE code = $1`, [code.toUpperCase()]);
 }
