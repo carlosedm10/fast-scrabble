@@ -19,4 +19,8 @@ Shared Hetzner host `games.carloseduardo.es` (`167.233.36.55`).
 
 Edge config: `deploy/host/edge/sites/games.caddy`
 
-Reload after changes: `sudo systemctl reload caddy` (or your edge reload command).
+Reload after changes (same as `remote-deploy.sh`):
+
+```bash
+cd /opt/apps/edge && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+```

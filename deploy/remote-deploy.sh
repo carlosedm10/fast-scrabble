@@ -4,6 +4,8 @@ set -euo pipefail
 DEPLOY_HOST="${DEPLOY_HOST:?DEPLOY_HOST is required}"
 DEPLOY_USER="${DEPLOY_USER:?DEPLOY_USER is required}"
 DEPLOY_PATH="${DEPLOY_PATH:-/opt/apps/fast-scrabble}"
+EDGE_PATH="${EDGE_PATH:-/opt/apps/edge}"
+CADDY_SITE="games.caddy"
 SSH_KEY="${DEPLOY_SSH_KEY:-}"
 
 SSH_OPTS=(-o StrictHostKeyChecking=accept-new)
@@ -20,16 +22,30 @@ rsync -avz --delete \
   -e "ssh ${SSH_OPTS[*]}" \
   ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
 
-echo "==> Building and starting production stack"
+echo "==> Building stack, installing Caddy site, reloading edge"
 ssh "${SSH_OPTS[@]}" "${DEPLOY_USER}@${DEPLOY_HOST}" bash -s <<REMOTE
 set -euo pipefail
-cd "${DEPLOY_PATH}"
+DEPLOY_PATH="${DEPLOY_PATH}"
+EDGE_PATH="${EDGE_PATH}"
+CADDY_SITE="${CADDY_SITE}"
+
+cd "\${DEPLOY_PATH}"
 if [[ ! -f .env ]]; then
-  echo "ERROR: .env not found on server. Copy from .env_template and configure secrets."
+  echo "ERROR: .env not found on server."
+  echo "Copy deploy/env.production.example to .env and set production secrets."
   exit 1
 fi
+
+echo "==> docker compose up (prod)"
 docker compose -f compose.prod.yaml up --build -d --force-recreate
 docker compose -f compose.prod.yaml ps
+
+echo "==> Installing Caddy site config"
+install -D -m 644 "\${DEPLOY_PATH}/deploy/host/edge/sites/\${CADDY_SITE}" "\${EDGE_PATH}/sites/\${CADDY_SITE}"
+
+echo "==> Reloading edge Caddy"
+cd "\${EDGE_PATH}"
+docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
 REMOTE
 
 echo "==> Deploy complete"

@@ -13,7 +13,7 @@ services:
       - BASE_PATH=/scrabble
       - CORS_ORIGIN=https://games.carloseduardo.es
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"
     depends_on:
       postgres-scrabble:
         condition: service_healthy
@@ -52,7 +52,7 @@ services:
         VITE_SOCKET_URL: https://games.carloseduardo.es
     command: bun run preview -- --host 0.0.0.0 --port 3200
     ports:
-      - "3200:3200"
+      - "127.0.0.1:3200:3200"
     depends_on:
       - backend-scrabble
     networks:
