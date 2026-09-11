@@ -199,6 +199,47 @@ export function playTiles(
   return { room: updatedRoom, score: moveScore };
 }
 
+export function previewPlay(
+  room: GameRoom,
+  playerId: string,
+  moves: MovePlacement[],
+): { score: number; words: string[] } | { error: string } {
+  if (room.status !== "playing") {
+    return { error: "Game not in progress" };
+  }
+  if (!isPlayerTurn(room, playerId)) {
+    return { error: "Not your turn" };
+  }
+
+  const player = room.players.find((p) => p.id === playerId);
+  if (!player) return { error: "Player not found" };
+
+  for (const move of moves) {
+    const tile = player.rack.find((t) => t.id === move.tileId);
+    if (tile?.kind === "blank" && move.assignedLetter) {
+      if (isWildcardForbidden(room.language, move.assignedLetter)) {
+        return { error: `Wildcard cannot be ${move.assignedLetter} in ${room.language}` };
+      }
+    }
+  }
+
+  const isFirstMove = room.board.every((row) => row.every((cell) => cell === null));
+  const result = validatePlacement(room.board, moves, player.rack, room.language, isFirstMove);
+  if (!result.valid) {
+    return { error: result.error ?? "Invalid placement" };
+  }
+
+  const newBoard = room.board.map((row) => [...row]);
+  for (const placed of result.placements) {
+    newBoard[placed.row][placed.col] = placed;
+  }
+
+  return {
+    score: scoreMove(newBoard, result.placements, moves),
+    words: result.formedWords,
+  };
+}
+
 export function passTurn(room: GameRoom, playerId: string): GameRoom | { error: string } {
   if (room.status !== "playing") return { error: "Game not in progress" };
   if (!isPlayerTurn(room, playerId)) return { error: "Not your turn" };

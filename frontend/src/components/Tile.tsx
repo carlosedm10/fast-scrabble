@@ -1,3 +1,4 @@
+import type { PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 
 export interface TileData {
@@ -12,8 +13,10 @@ interface TileProps {
   tile: TileData;
   selected?: boolean;
   onClick?: () => void;
+  onPointerDown?: (event: PointerEvent) => void;
   size?: "sm" | "md" | "lg";
   displayLetter?: string;
+  dragging?: boolean;
 }
 
 const sizes = {
@@ -22,7 +25,15 @@ const sizes = {
   lg: "h-12 w-12 text-base",
 };
 
-export function Tile({ tile, selected, onClick, size = "md", displayLetter }: TileProps) {
+export function Tile({
+  tile,
+  selected,
+  onClick,
+  onPointerDown,
+  size = "md",
+  displayLetter,
+  dragging,
+}: TileProps) {
   const letter = displayLetter ?? (tile.kind === "blank" ? (tile.assigned ?? "") : tile.letter);
   const showPoints = tile.kind !== "blank" || tile.assigned;
 
@@ -30,13 +41,15 @@ export function Tile({ tile, selected, onClick, size = "md", displayLetter }: Ti
     <button
       type="button"
       onClick={onClick}
+      onPointerDown={onPointerDown}
       className={cn(
-        "relative flex items-center justify-center rounded border-2 font-bold transition-all",
+        "relative flex items-center justify-center rounded border-2 font-bold transition-all select-none touch-none",
         "bg-amber-100 text-brand-dark border-amber-300",
         sizes[size],
         selected && "ring-2 ring-brand-cyan scale-105",
-        onClick && "cursor-pointer hover:scale-105 active:scale-95",
+        (onClick || onPointerDown) && "cursor-grab active:cursor-grabbing hover:scale-105",
         tile.kind === "blank" && !letter && "bg-amber-50 border-dashed",
+        dragging && "opacity-40",
       )}
     >
       <span className="uppercase">{letter || "·"}</span>

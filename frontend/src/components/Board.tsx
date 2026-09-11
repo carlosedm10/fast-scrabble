@@ -1,3 +1,4 @@
+import type { PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Tile, type TileData } from "./Tile";
 
@@ -48,9 +49,18 @@ interface BoardProps {
   pendingPlacements: PendingPlacement[];
   rack: { id: string; letter: string; points: number; kind: string }[];
   onCellTap: (row: number, col: number) => void;
+  onPendingPointerDown?: (tileId: string, event: PointerEvent) => void;
+  draggingTileId?: string | null;
 }
 
-export function Board({ board, pendingPlacements, rack, onCellTap }: BoardProps) {
+export function Board({
+  board,
+  pendingPlacements,
+  rack,
+  onCellTap,
+  onPendingPointerDown,
+  draggingTileId,
+}: BoardProps) {
   const getPending = (row: number, col: number) =>
     pendingPlacements.find((p) => p.row === row && p.col === col);
 
@@ -73,7 +83,7 @@ export function Board({ board, pendingPlacements, rack, onCellTap }: BoardProps)
 
             if (placed) {
               return (
-                <div key={`${r}-${c}`} className="aspect-square">
+                <div key={`${r}-${c}`} className="aspect-square" data-board-cell data-row={r} data-col={c}>
                   <Tile
                     tile={{
                       id: `${r}-${c}`,
@@ -92,11 +102,19 @@ export function Board({ board, pendingPlacements, rack, onCellTap }: BoardProps)
               const rackTile = getRackTile(pending.tileId);
               if (rackTile) {
                 return (
-                  <div key={`${r}-${c}`} className="aspect-square">
+                  <div
+                    key={`${r}-${c}`}
+                    className="aspect-square"
+                    data-board-cell
+                    data-row={r}
+                    data-col={c}
+                  >
                     <Tile
                       tile={rackTile as TileData}
                       size="sm"
                       displayLetter={pending.assignedLetter ?? rackTile.letter}
+                      dragging={draggingTileId === pending.tileId}
+                      onPointerDown={(event) => onPendingPointerDown?.(pending.tileId, event)}
                     />
                   </div>
                 );
@@ -107,6 +125,9 @@ export function Board({ board, pendingPlacements, rack, onCellTap }: BoardProps)
               <button
                 key={`${r}-${c}`}
                 type="button"
+                data-board-cell
+                data-row={r}
+                data-col={c}
                 onClick={() => onCellTap(r, c)}
                 className={cn(
                   "aspect-square rounded text-[7px] font-semibold flex items-center justify-center",
