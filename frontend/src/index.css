@@ -24,3 +24,47 @@ body {
 #root {
   min-height: 100vh;
 }
+
+@keyframes tile-jiggle {
+  0% {
+    transform: rotate(-3.2deg);
+  }
+  25% {
+    transform: rotate(3deg);
+  }
+  50% {
+    transform: rotate(-2.4deg);
+  }
+  75% {
+    transform: rotate(2.8deg);
+  }
+  100% {
+    transform: rotate(-3.2deg);
+  }
+}
+
+@keyframes tile-pop-in {
+  0% {
+    transform: scale(1.18);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.tile-jiggle {
+  animation: tile-jiggle 0.2s ease-in-out infinite;
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.tile-ghost-lift {
+  filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.55));
+}
+
+.tile-pop-in {
+  animation: tile-pop-in 0.16s ease-out;
+}
+

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Copy, Link2, LogOut, Play, RefreshCw, SkipForward, Undo2 } from "lucide-react";
 import { Board } from "@/components/Board";
+import { DragTileGhost } from "@/components/DragTileGhost";
 import { Tile } from "@/components/Tile";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -42,7 +43,16 @@ export function GamePage() {
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState<{ score: number; error: string | null } | null>(null);
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null);
-  const dragRef = useRef<{ tileId: string; x: number; y: number; moved: boolean } | null>(null);
+  const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
+  const dragRef = useRef<{
+    tileId: string;
+    originX: number;
+    originY: number;
+    x: number;
+    y: number;
+    moved: boolean;
+  } | null>(null);
+  const hoverRef = useRef<{ row: number; col: number } | null>(null);
 
   const token = getToken();
   const rack: TileData[] = room?.yourRack ?? [];
@@ -156,22 +166,50 @@ export function GamePage() {
   const beginDrag = (tileId: string, event: ReactPointerEvent) => {
     if (!isMyTurn || room?.status !== "playing") return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = { tileId, x: event.clientX, y: event.clientY, moved: false };
+    dragRef.current = {
+      tileId,
+      originX: event.clientX,
+      originY: event.clientY,
+      x: event.clientX,
+      y: event.clientY,
+      moved: false,
+    };
     setDraggingTileId(tileId);
+    document.body.style.userSelect = "none";
+    document.body.style.touchAction = "none";
   };
 
   useEffect(() => {
+    const updateHover = (clientX: number, clientY: number) => {
+      const el = document.elementFromPoint(clientX, clientY);
+      const cell = el?.closest("[data-board-cell]") as HTMLElement | null;
+      const next = cell
+        ? { row: Number(cell.dataset.row), col: Number(cell.dataset.col) }
+        : null;
+      const prev = hoverRef.current;
+      if (prev?.row === next?.row && prev?.col === next?.col) return;
+      hoverRef.current = next;
+      setHoverCell(next);
+    };
+
     const onMove = (event: globalThis.PointerEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 8) {
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      if (!drag.moved && Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY) > 6) {
         drag.moved = true;
       }
+      updateHover(event.clientX, event.clientY);
     };
     const onUp = (event: globalThis.PointerEvent) => {
       const drag = dragRef.current;
       dragRef.current = null;
       setDraggingTileId(null);
+      hoverRef.current = null;
+      setHoverCell(null);
+      document.body.style.userSelect = "";
+      document.body.style.touchAction = "";
       if (!drag) return;
 
       const el = document.elementFromPoint(event.clientX, event.clientY);
@@ -192,9 +230,11 @@ export function GamePage() {
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [placeTileAt, pendingPlacements]);
 
@@ -384,6 +424,7 @@ export function GamePage() {
             onCellTap={handleCellTap}
             onPendingPointerDown={beginDrag}
             draggingTileId={draggingTileId}
+            hoverCell={hoverCell}
           />
 
           {room.status === "playing" && isMyTurn && (
@@ -504,6 +545,20 @@ export function GamePage() {
           </div>
         </DialogContent>
       </Dialog>
+      {draggingTileId &&
+        (() => {
+          const tile = rack.find((item) => item.id === draggingTileId);
+          if (!tile) return null;
+          const pending = pendingPlacements.find((p) => p.tileId === draggingTileId);
+          return (
+            <DragTileGhost
+              tile={tile}
+              displayLetter={pending?.assignedLetter ?? tile.letter}
+              x={dragRef.current?.x ?? 0}
+              y={dragRef.current?.y ?? 0}
+            />
+          );
+        })()}
     </div>
   );
 }

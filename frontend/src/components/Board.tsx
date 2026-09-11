@@ -51,6 +51,7 @@ interface BoardProps {
   onCellTap: (row: number, col: number) => void;
   onPendingPointerDown?: (tileId: string, event: PointerEvent) => void;
   draggingTileId?: string | null;
+  hoverCell?: { row: number; col: number } | null;
 }
 
 export function Board({
@@ -60,6 +61,7 @@ export function Board({
   onCellTap,
   onPendingPointerDown,
   draggingTileId,
+  hoverCell,
 }: BoardProps) {
   const getPending = (row: number, col: number) =>
     pendingPlacements.find((p) => p.row === row && p.col === col);
@@ -114,6 +116,7 @@ export function Board({
                       size="sm"
                       displayLetter={pending.assignedLetter ?? rackTile.letter}
                       dragging={draggingTileId === pending.tileId}
+                      popping={draggingTileId !== pending.tileId}
                       onPointerDown={(event) => onPendingPointerDown?.(pending.tileId, event)}
                     />
                   </div>
@@ -138,6 +141,9 @@ export function Board({
                   cell === "dl" && "bg-cyan-900/30 text-cyan-300",
                   cell === "star" && "bg-brand-cyan/20 text-brand-cyan-light",
                   cell === "n" && "bg-brand-dark/50 text-white/20",
+                  hoverCell?.row === r &&
+                    hoverCell?.col === c &&
+                    "ring-2 ring-brand-cyan-light scale-105 bg-brand-cyan/25",
                 )}
               >
                 {mult}

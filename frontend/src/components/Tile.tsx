@@ -17,6 +17,7 @@ interface TileProps {
   size?: "sm" | "md" | "lg";
   displayLetter?: string;
   dragging?: boolean;
+  popping?: boolean;
 }
 
 const sizes = {
@@ -33,6 +34,7 @@ export function Tile({
   size = "md",
   displayLetter,
   dragging,
+  popping,
 }: TileProps) {
   const letter = displayLetter ?? (tile.kind === "blank" ? (tile.assigned ?? "") : tile.letter);
   const showPoints = tile.kind !== "blank" || tile.assigned;
@@ -49,7 +51,8 @@ export function Tile({
         selected && "ring-2 ring-brand-cyan scale-105",
         (onClick || onPointerDown) && "cursor-grab active:cursor-grabbing hover:scale-105",
         tile.kind === "blank" && !letter && "bg-amber-50 border-dashed",
-        dragging && "opacity-40",
+        dragging && "opacity-20",
+        popping && "tile-pop-in",
       )}
     >
       <span className="uppercase">{letter || "·"}</span>
