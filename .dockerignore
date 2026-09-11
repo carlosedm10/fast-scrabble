@@ -1,0 +1,10 @@
+.git
+.github
+.cursor
+**/.DS_Store
+**/node_modules
+**/.vite
+frontend/dist
+*.md
+.env
+.envrc

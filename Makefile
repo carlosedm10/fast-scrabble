@@ -3,11 +3,10 @@ PROJECT_SLUG := scrabble
 # ------------------------------ Docker Compose ------------------------------ #
 .PHONY: build up down restart build-backend build-frontend prod-up prod-down
 
-build: build-backend build-frontend
+build:
 	@echo ":: build: ."
-	docker compose up --build -d --force-recreate
-	@echo "Backend:  http://localhost:8000/"
-	@echo "Frontend: http://localhost:3000/scrabble/"
+	docker compose build
+	@echo "Images built. Run 'make up' to start."
 
 build-backend:
 	$(MAKE) -C backend build

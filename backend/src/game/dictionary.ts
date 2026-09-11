@@ -1,12 +1,13 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 import type { Language } from "./types";
 
 const lexiconDir = join(dirname(fileURLToPath(import.meta.url)), "lexicon");
 
 function loadLexicon(filename: string): Set<string> {
-  const text = readFileSync(join(lexiconDir, filename), "utf8");
+  const text = gunzipSync(readFileSync(join(lexiconDir, filename))).toString("utf8");
   const words = new Set<string>();
   for (const line of text.split("\n")) {
     const word = line.trim();
@@ -16,8 +17,8 @@ function loadLexicon(filename: string): Set<string> {
 }
 
 const dictionaries: Record<Language, Set<string>> = {
-  en: loadLexicon("en.txt"),
-  es: loadLexicon("es.txt"),
+  en: loadLexicon("en.txt.gz"),
+  es: loadLexicon("es.txt.gz"),
 };
 
 export function normalizeWord(_language: Language, word: string): string {
