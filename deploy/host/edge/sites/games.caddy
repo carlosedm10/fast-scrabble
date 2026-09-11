@@ -1,0 +1,18 @@
+games.carloseduardo.es {
+	# fast-scrabble API and WebSocket
+	handle /scrabble/api* {
+		reverse_proxy 127.0.0.1:8200
+	}
+
+	handle /scrabble/socket.io* {
+		reverse_proxy 127.0.0.1:8200
+	}
+
+	# fast-scrabble frontend (Vite preview / static)
+	handle /scrabble* {
+		reverse_proxy 127.0.0.1:3200
+	}
+
+	# Redirect root to scrabble
+	redir / /scrabble 302
+}

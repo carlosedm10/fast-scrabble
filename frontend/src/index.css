@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-dark: #0a0a0a;
+  --color-brand-surface: #151515;
+  --color-brand-cyan: #049ee2;
+  --color-brand-cyan-light: #17c0fd;
+  --color-brand-white: #ffffff;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-brand-dark);
+  color: var(--color-brand-white);
+  font-family: var(--font-sans);
+}
+
+#root {
+  min-height: 100vh;
+}

@@ -1,0 +1,73 @@
+services:
+  backend-scrabble:
+    container_name: scrabble_backend
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres-scrabble:5432/${POSTGRES_DB:-scrabble}
+      - PORT=8000
+      - CORS_ORIGIN=http://localhost:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres-scrabble:
+        condition: service_healthy
+    command: bun run dev
+    networks:
+      - appnet_scrabble
+
+  postgres-scrabble:
+    container_name: scrabble_db
+    image: postgres:16-alpine
+    build:
+      context: .
+      dockerfile: docker/postgresql.Dockerfile
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-scrabble}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_scrabble:/var/lib/postgresql/data
+    networks:
+      - appnet_scrabble
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend-scrabble:
+    container_name: scrabble_frontend
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    command: bun run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend:/code
+      - /code/node_modules
+    ports:
+      - "3000:5173"
+    depends_on:
+      - backend-scrabble
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_SOCKET_URL=http://localhost:8000
+    networks:
+      - appnet_scrabble
+
+volumes:
+  postgres_data_scrabble:
+
+networks:
+  appnet_scrabble:
