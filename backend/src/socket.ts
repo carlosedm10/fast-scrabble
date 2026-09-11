@@ -31,7 +31,7 @@ function remember(room: GameRoom): GameRoom {
 async function expireRoomNow(room: GameRoom): Promise<GameRoom> {
   const finished = finalizeExpiredRoom(hydrateRoom(room));
   const board = ranking(finished);
-  ioRef?.to(finished.code).emit("room:updated", sanitizeRoomForClient(finished));
+  await broadcastRoom(finished);
   ioRef?.to(finished.code).emit("game:expired", {
     ranking: board,
     room: sanitizeRoomForClient(finished),
@@ -63,6 +63,25 @@ async function persistRoom(room: GameRoom): Promise<void> {
   await saveRoom(hydrated);
 }
 
+async function broadcastRoom(room: GameRoom): Promise<void> {
+  const io = ioRef;
+  if (!io) return;
+  const sockets = await io.in(room.code).fetchSockets();
+  if (sockets.length === 0) {
+    io.to(room.code).emit("room:updated", sanitizeRoomForClient(room));
+    return;
+  }
+  for (const sock of sockets) {
+    const token = typeof sock.data.token === "string" ? sock.data.token : undefined;
+    sock.emit("room:updated", sanitizeRoomForClient(room, token));
+  }
+}
+
+function bindSocketToRoom(socket: Socket, roomCode: string, token?: string): void {
+  socket.join(roomCode);
+  if (token) socket.data.token = token;
+}
+
 function missingError(result: Exclude<LoadResult, { status: "ok" }>): string {
   return result.status === "expired" ? "expired" : "Room not found";
 }
@@ -77,9 +96,9 @@ export function registerSocketHandlers(io: Server): void {
           const room = createRoom(data.language, data.nickname, data.maxPlayers);
           await persistRoom(room);
           const player = room.players[0];
-          socket.join(room.code);
+          bindSocketToRoom(socket, room.code, player.token);
           cb({ ok: true, room: sanitizeRoomForClient(room, player.token), token: player.token });
-          io.to(room.code).emit("room:updated", sanitizeRoomForClient(room));
+          await broadcastRoom(room);
         } catch (err) {
           cb({ ok: false, error: String(err) });
         }
@@ -96,13 +115,13 @@ export function registerSocketHandlers(io: Server): void {
         if ("error" in result) return cb({ ok: false, error: result.error });
 
         await persistRoom(result.room);
-        socket.join(result.room.code);
+        bindSocketToRoom(socket, result.room.code, result.player.token);
         cb({
           ok: true,
           room: sanitizeRoomForClient(result.room, result.player.token),
           token: result.player.token,
         });
-        io.to(result.room.code).emit("room:updated", sanitizeRoomForClient(result.room));
+        await broadcastRoom(result.room);
       } catch (err) {
         cb({ ok: false, error: String(err) });
       }
@@ -113,6 +132,7 @@ export function registerSocketHandlers(io: Server): void {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
         const room = loaded.room;
+        bindSocketToRoom(socket, room.code, data.token);
 
         const player = getPlayerByToken(room, data.token);
         if (!player) return cb({ ok: false, error: "Invalid token" });
@@ -121,7 +141,7 @@ export function registerSocketHandlers(io: Server): void {
         if ("error" in result) return cb({ ok: false, error: result.error });
 
         await persistRoom(result);
-        io.to(result.code).emit("room:updated", sanitizeRoomForClient(result));
+        await broadcastRoom(result);
         cb({ ok: true, room: sanitizeRoomForClient(result, data.token) });
       } catch (err) {
         cb({ ok: false, error: String(err) });
@@ -133,6 +153,7 @@ export function registerSocketHandlers(io: Server): void {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
         const room = loaded.room;
+        bindSocketToRoom(socket, room.code, data.token);
 
         const player = getPlayerByToken(room, data.token);
         if (!player) return cb({ ok: false, error: "Invalid token" });
@@ -141,7 +162,7 @@ export function registerSocketHandlers(io: Server): void {
         if ("error" in result) return cb({ ok: false, error: result.error });
 
         await persistRoom(result.room);
-        io.to(result.room.code).emit("room:updated", sanitizeRoomForClient(result.room));
+        await broadcastRoom(result.room);
         io.to(result.room.code).emit("game:scored", { playerId: player.id, score: result.score });
         cb({ ok: true, room: sanitizeRoomForClient(result.room, data.token), score: result.score });
       } catch (err) {
@@ -154,6 +175,7 @@ export function registerSocketHandlers(io: Server): void {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
         const room = loaded.room;
+        bindSocketToRoom(socket, room.code, data.token);
 
         const player = getPlayerByToken(room, data.token);
         if (!player) return cb({ ok: false, error: "Invalid token" });
@@ -162,7 +184,7 @@ export function registerSocketHandlers(io: Server): void {
         if ("error" in result) return cb({ ok: false, error: result.error });
 
         await persistRoom(result);
-        io.to(result.code).emit("room:updated", sanitizeRoomForClient(result));
+        await broadcastRoom(result);
         cb({ ok: true, room: sanitizeRoomForClient(result, data.token) });
       } catch (err) {
         cb({ ok: false, error: String(err) });
@@ -174,6 +196,7 @@ export function registerSocketHandlers(io: Server): void {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
         const room = loaded.room;
+        bindSocketToRoom(socket, room.code, data.token);
 
         const player = getPlayerByToken(room, data.token);
         if (!player) return cb({ ok: false, error: "Invalid token" });
@@ -182,7 +205,7 @@ export function registerSocketHandlers(io: Server): void {
         if ("error" in result) return cb({ ok: false, error: result.error });
 
         await persistRoom(result);
-        io.to(result.code).emit("room:updated", sanitizeRoomForClient(result));
+        await broadcastRoom(result);
         cb({ ok: true, room: sanitizeRoomForClient(result, data.token) });
       } catch (err) {
         cb({ ok: false, error: String(err) });
@@ -193,6 +216,7 @@ export function registerSocketHandlers(io: Server): void {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
+        bindSocketToRoom(socket, loaded.room.code, data.token);
         cb({ ok: true, room: sanitizeRoomForClient(loaded.room, data.token) });
       } catch (err) {
         cb({ ok: false, error: String(err) });

@@ -73,9 +73,13 @@ export function GamePage() {
     syncRoom();
     const socket = getSocket();
     const onUpdate = (updated: RoomView) => {
-      if (updated.code === code?.toUpperCase()) {
+      if (updated.code !== code?.toUpperCase()) return;
+      // Anonymous broadcasts drop isYou; resync so the host still sees Start.
+      if (updated.players.some((p) => p.isYou) || updated.yourRack) {
         applyRoom(updated);
+        return;
       }
+      syncRoom();
     };
     const onScored = (data: { score: number }) => {
       setMessage(t("plusPoints", { score: data.score }));
