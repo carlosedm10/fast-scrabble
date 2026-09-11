@@ -14,6 +14,7 @@ import {
   joinRoom,
   passTurn,
   playTiles,
+  previewPlay,
   sanitizeRoomForClient,
   startGame,
 } from "./game/room";
@@ -165,6 +166,22 @@ export function registerSocketHandlers(io: Server): void {
         await broadcastRoom(result.room);
         io.to(result.room.code).emit("game:scored", { playerId: player.id, score: result.score });
         cb({ ok: true, room: sanitizeRoomForClient(result.room, data.token), score: result.score });
+      } catch (err) {
+        cb({ ok: false, error: String(err) });
+      }
+    });
+
+    socket.on("game:preview", async (data: { code: string; token: string; moves: MovePlacement[] }, cb) => {
+      try {
+        const loaded = await getOrLoadRoom(data.code);
+        if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
+        const room = loaded.room;
+        const player = getPlayerByToken(room, data.token);
+        if (!player) return cb({ ok: false, error: "Invalid token" });
+        if (!data.moves?.length) return cb({ ok: true, score: 0, words: [] });
+        const result = previewPlay(room, player.id, data.moves);
+        if ("error" in result) return cb({ ok: false, error: result.error });
+        cb({ ok: true, score: result.score, words: result.words });
       } catch (err) {
         cb({ ok: false, error: String(err) });
       }

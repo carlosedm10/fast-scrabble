@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Copy, Link2, LogOut, Play, RefreshCw, SkipForward, Undo2 } from "lucide-react";
@@ -19,9 +19,12 @@ function statusLabel(status: RoomView["status"], t: (key: string) => string): st
   return t("statusFinished");
 }
 
-function mapServerError(error: string | undefined, t: (key: string) => string, fallback: string): string {
+function mapServerError(error: string | undefined, t: (key: string, opts?: Record<string, unknown>) => string, fallback: string): string {
   if (error === "expired") return t("expired");
   if (error === "Room not found") return t("roomNotFound");
+  if (error?.startsWith("Invalid word:")) {
+    return t("invalidWord", { word: error.slice("Invalid word:".length).trim() });
+  }
   return error ?? fallback;
 }
 
@@ -37,6 +40,9 @@ export function GamePage() {
   const [wildcardDialog, setWildcardDialog] = useState<{ tileId: string; row: number; col: number } | null>(null);
   const [ttlDialog, setTtlDialog] = useState(false);
   const [message, setMessage] = useState("");
+  const [preview, setPreview] = useState<{ score: number; error: string | null } | null>(null);
+  const [draggingTileId, setDraggingTileId] = useState<string | null>(null);
+  const dragRef = useRef<{ tileId: string; x: number; y: number; moved: boolean } | null>(null);
 
   const token = getToken();
   const rack: TileData[] = room?.yourRack ?? [];
@@ -110,25 +116,109 @@ export function GamePage() {
     return [...room.players].sort((a, b) => b.score - a.score);
   }, [room]);
 
+  const placeTileAt = useCallback(
+    (row: number, col: number, tileId: string) => {
+      if (!isMyTurn || room?.status !== "playing") return;
+      if (room.board?.[row]?.[col]) return;
+
+      const tile = rack.find((t) => t.id === tileId);
+      if (!tile) return;
+
+      setPendingPlacements((prev) => {
+        if (prev.some((p) => p.row === row && p.col === col && p.tileId !== tileId)) return prev;
+        const rest = prev.filter((p) => p.tileId !== tileId);
+        const existing = prev.find((p) => p.tileId === tileId);
+        if (tile.kind === "blank" && !existing?.assignedLetter) {
+          setWildcardDialog({ tileId: tile.id, row, col });
+          return rest;
+        }
+        return [
+          ...rest,
+          {
+            row,
+            col,
+            tileId,
+            assignedLetter: existing?.assignedLetter,
+          },
+        ];
+      });
+      setSelectedTileId(null);
+      setError("");
+    },
+    [isMyTurn, rack, room],
+  );
+
   const handleCellTap = (row: number, col: number) => {
-    if (!isMyTurn || room?.status !== "playing") return;
-    if (room.board?.[row]?.[col]) return;
-    if (pendingPlacements.some((p) => p.row === row && p.col === col)) return;
-
     if (!selectedTileId) return;
+    placeTileAt(row, col, selectedTileId);
+  };
 
-    const tile = rack.find((t) => t.id === selectedTileId);
-    if (!tile) return;
-    if (pendingPlacements.some((p) => p.tileId === selectedTileId)) return;
+  const beginDrag = (tileId: string, event: ReactPointerEvent) => {
+    if (!isMyTurn || room?.status !== "playing") return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { tileId, x: event.clientX, y: event.clientY, moved: false };
+    setDraggingTileId(tileId);
+  };
 
-    if (tile.kind === "blank") {
-      setWildcardDialog({ tileId: tile.id, row, col });
+  useEffect(() => {
+    const onMove = (event: globalThis.PointerEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      if (Math.hypot(event.clientX - drag.x, event.clientY - drag.y) > 8) {
+        drag.moved = true;
+      }
+    };
+    const onUp = (event: globalThis.PointerEvent) => {
+      const drag = dragRef.current;
+      dragRef.current = null;
+      setDraggingTileId(null);
+      if (!drag) return;
+
+      const el = document.elementFromPoint(event.clientX, event.clientY);
+      const cell = el?.closest("[data-board-cell]") as HTMLElement | null;
+      const onRack = Boolean(el?.closest("[data-rack]"));
+
+      if (drag.moved) {
+        if (cell) {
+          placeTileAt(Number(cell.dataset.row), Number(cell.dataset.col), drag.tileId);
+        } else if (onRack) {
+          setPendingPlacements((prev) => prev.filter((p) => p.tileId !== drag.tileId));
+        }
+        return;
+      }
+
+      if (pendingPlacements.some((p) => p.tileId === drag.tileId)) return;
+      setSelectedTileId((current) => (current === drag.tileId ? null : drag.tileId));
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [placeTileAt, pendingPlacements]);
+
+  useEffect(() => {
+    if (!code || !token || pendingPlacements.length === 0) {
+      setPreview(null);
       return;
     }
-
-    setPendingPlacements((prev) => [...prev, { row, col, tileId: selectedTileId }]);
-    setSelectedTileId(null);
-  };
+    const socket = getSocket();
+    socket.emit(
+      "game:preview",
+      { code, token, moves: pendingPlacements },
+      (res: { ok: boolean; score?: number; error?: string }) => {
+        if (res.ok) {
+          setPreview({ score: res.score ?? 0, error: null });
+        } else {
+          setPreview({
+            score: 0,
+            error: mapServerError(res.error, t, t("invalidMove")),
+          });
+        }
+      },
+    );
+  }, [code, token, pendingPlacements, t]);
 
   const handleWildcardSelect = (letter: string) => {
     if (!wildcardDialog) return;
@@ -292,19 +382,34 @@ export function GamePage() {
             pendingPlacements={pendingPlacements}
             rack={rack}
             onCellTap={handleCellTap}
+            onPendingPointerDown={beginDrag}
+            draggingTileId={draggingTileId}
           />
 
           {room.status === "playing" && isMyTurn && (
-            <div className="flex flex-wrap gap-2 mt-4 justify-center">
-              <Button onClick={handlePlay} disabled={pendingPlacements.length === 0}>
-                {t("playWord")}
-              </Button>
-              <Button variant="outline" onClick={handleUndoPending} disabled={pendingPlacements.length === 0}>
-                <Undo2 className="h-4 w-4" /> {t("undo")}
-              </Button>
-              <Button variant="outline" onClick={handlePass}>
-                <SkipForward className="h-4 w-4" /> {t("pass")}
-              </Button>
+            <div className="flex flex-col items-center gap-2 mt-4">
+              {preview?.error && (
+                <p className="text-red-400 text-sm">{preview.error}</p>
+              )}
+              {preview && !preview.error && pendingPlacements.length > 0 && (
+                <p className="text-2xl font-semibold text-brand-cyan-light">
+                  {t("previewScore", { score: preview.score })}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button
+                  onClick={handlePlay}
+                  disabled={pendingPlacements.length === 0 || Boolean(preview?.error)}
+                >
+                  {t("playWord")}
+                </Button>
+                <Button variant="outline" onClick={handleUndoPending} disabled={pendingPlacements.length === 0}>
+                  <Undo2 className="h-4 w-4" /> {t("undo")}
+                </Button>
+                <Button variant="outline" onClick={handlePass}>
+                  <SkipForward className="h-4 w-4" /> {t("pass")}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -343,25 +448,23 @@ export function GamePage() {
           </div>
 
           {rack.length > 0 && room.status !== "finished" && (
-            <div className="rounded-xl border border-brand-cyan/20 bg-brand-surface p-4">
+            <div className="rounded-xl border border-brand-cyan/20 bg-brand-surface p-4" data-rack>
               <h2 className="font-semibold mb-3 text-brand-cyan-light">{t("yourRack")}</h2>
               <div className="flex flex-wrap gap-2 justify-center">
-                {rack.map((tile) => (
-                  <Tile
-                    key={tile.id}
-                    tile={tile}
-                    selected={selectedTileId === tile.id}
-                    onClick={() => {
-                      if (!isMyTurn || room.status !== "playing") return;
-                      setSelectedTileId(selectedTileId === tile.id ? null : tile.id);
-                    }}
-                    size="lg"
-                  />
-                ))}
+                {rack
+                  .filter((tile) => !pendingPlacements.some((p) => p.tileId === tile.id))
+                  .map((tile) => (
+                    <Tile
+                      key={tile.id}
+                      tile={tile}
+                      selected={selectedTileId === tile.id}
+                      dragging={draggingTileId === tile.id}
+                      onPointerDown={(event) => beginDrag(tile.id, event)}
+                      size="lg"
+                    />
+                  ))}
               </div>
-              {selectedTileId && (
-                <p className="text-xs text-white/50 text-center mt-2">{t("tapToPlace")}</p>
-              )}
+              <p className="text-xs text-white/50 text-center mt-2">{t("dragToPlace")}</p>
             </div>
           )}
         </aside>

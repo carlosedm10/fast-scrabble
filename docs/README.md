@@ -9,7 +9,7 @@ Browser (/scrabble/) → Socket.IO + REST → Fastify backend → Postgres (room
                      ↘ static Vite build (prod) or dev server (local)
 ```
 
-- **Frontend** (`frontend/`) — React SPA, tap-to-place board, wildcard letter picker.
+- **Frontend** (`frontend/`) — React SPA, drag-to-place board, live score preview, wildcard letter picker.
 - **Backend** (`backend/`) — authoritative game engine, Socket.IO events, room persistence.
 - **Postgres** — JSONB room state; survives server restarts.
 
@@ -34,7 +34,7 @@ create/join room → Socket.IO room:* events → game engine validates → Postg
 - **Server is authoritative** — placement, scoring, and wildcard rules are validated in `backend/src/game/`.
 - **Language is immutable** — set when the host creates the room; joiners inherit it for UI, bag, and lexicon.
 - **24-hour inactivity** — last move (or last join if never started) older than 24 h → finish, broadcast ranking, delete the room.
-- **Minimal dictionary** — bundled word lists for demo; production should use full open lexicons (see caveats below).
+- **Open lexicons** — Spanish (~79k, javierarce/palabras, folded without accents except Ñ) and English (~359k, dwyl/english-words). Not the official DRAE/CSW lists.
 
 ## How data flows
 
@@ -53,12 +53,12 @@ create/join room → Socket.IO room:* events → game engine validates → Postg
 2. Backend creates room, deals tiles, returns code and token.
 3. Friend opens `/scrabble/p/ABC123` or types the code, joins with nickname.
 4. Host confirms the 24 h warning and clicks Start; play begins.
-5. Active player selects rack tile, taps board cell, plays word; server scores and broadcasts.
+5. Active player drags rack tiles onto the board, sees the live score, then plays the word; server validates and broadcasts.
 
 ## Key decisions and caveats
 
 - **FISE Spanish bag**: 100 tiles, Ñ included, no K/W, CH/LL/RR as single tiles, 2 blanks (cannot represent K/W).
-- **Dictionary copyright**: Word lists are simplified subsets for development. Full hunspell/ENABLE/SOWPODS lists have licensing terms — verify before production use.
+- **Dictionary copyright**: Open word lists (not DRAE/CSW). Spanish is accent-folded except Ñ. See `backend/src/game/lexicon/`.
 - **Base path `/scrabble/`**: Required for shared `games.carloseduardo.es` host behind Caddy.
 
 ## Where the details live
