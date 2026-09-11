@@ -390,26 +390,6 @@ export function GamePage() {
         </div>
       </header>
 
-      {room.status !== "finished" && (
-        <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1 lg:hidden">
-          {room.players.map((p) => (
-            <div
-              key={p.id}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap",
-                p.isCurrentTurn ? "bg-brand-cyan/20 ring-1 ring-brand-cyan" : "bg-brand-surface",
-              )}
-            >
-              <span className="max-w-[5.5rem] truncate">
-                {p.nickname}
-                {p.isYou ? ` ${t("you")}` : ""}
-              </span>
-              <span className="font-mono text-brand-cyan-light">{p.score}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       {(message || (error && room.status !== "finished")) && (
         <p
           className={cn(
@@ -441,7 +421,27 @@ export function GamePage() {
 
       <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[1fr_260px] lg:gap-6 lg:px-4">
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex items-center justify-center px-1">
+          <div className="flex-1 min-h-0 flex flex-col justify-end lg:justify-center">
+            {room.status !== "finished" && (
+              <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1.5 lg:hidden">
+                {room.players.map((p) => (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap",
+                      p.isCurrentTurn ? "bg-brand-cyan/20 ring-1 ring-brand-cyan" : "bg-brand-surface",
+                    )}
+                  >
+                    <span className="max-w-[5.5rem] truncate">
+                      {p.nickname}
+                      {p.isYou ? ` ${t("you")}` : ""}
+                    </span>
+                    <span className="font-mono text-brand-cyan-light">{p.score}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-center px-1 pb-1">
             <Board
               board={room.board}
               pendingPlacements={pendingPlacements}
@@ -451,9 +451,10 @@ export function GamePage() {
               draggingTileId={draggingTileId}
               hoverCell={hoverCell}
             />
+            </div>
           </div>
 
-          <div className="play-dock shrink-0 sticky bottom-0 z-20 border-t border-brand-cyan/15 bg-brand-dark/95 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-0 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:static">
+          <div className="play-dock shrink-0 sticky bottom-0 z-20 border-t border-brand-cyan/15 bg-brand-dark/95 px-2 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-0 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:pt-3">
             {room.status === "playing" && isMyTurn && (
               <div className="flex items-center justify-center gap-2 mb-2">
                 {preview && !preview.error && pendingPlacements.length > 0 && (
@@ -464,11 +465,11 @@ export function GamePage() {
                 <Button size="sm" onClick={handlePlay} disabled={pendingPlacements.length === 0}>
                   {t("playWord")}
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleUndoPending} disabled={pendingPlacements.length === 0}>
+                <Button variant="outline" size="sm" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
                   <Undo2 className="h-4 w-4" />
-                  <span className="hidden xs:inline sm:inline">{t("undo")}</span>
+                  <span className="hidden sm:inline">{t("undo")}</span>
                 </Button>
-                <Button variant="outline" size="sm" onClick={handlePass}>
+                <Button variant="outline" size="sm" onClick={handlePass} aria-label={t("pass")}>
                   <SkipForward className="h-4 w-4" />
                   <span className="hidden sm:inline">{t("pass")}</span>
                 </Button>
