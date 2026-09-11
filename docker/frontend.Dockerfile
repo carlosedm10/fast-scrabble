@@ -1,4 +1,4 @@
-FROM oven/bun:1.2.5 AS builder
+FROM oven/bun:1.4.2 AS builder
 
 WORKDIR /code
 
@@ -15,7 +15,7 @@ ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
 
 RUN bun run build
 
-FROM oven/bun:1.2.5
+FROM oven/bun:1.4.2
 
 WORKDIR /code
 
