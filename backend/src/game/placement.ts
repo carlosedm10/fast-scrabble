@@ -97,60 +97,80 @@ function touchesExisting(board: (PlacedTile | null)[][] , moves: MovePlacement[]
   return false;
 }
 
-function readWord(
+function readLetterUnits(
   board: (PlacedTile | null)[][],
   startRow: number,
   startCol: number,
   dRow: number,
   dCol: number,
-): string {
-  let letters = "";
+): string[] {
+  const units: string[] = [];
   let r = startRow;
   let c = startCol;
   while (getCell(board, r, c)) {
-    const cell = getCell(board, r, c)!;
-    letters += cell.letter;
+    units.push(getCell(board, r, c)!.letter);
     r += dRow;
     c += dCol;
   }
-  return letters;
+  return units;
 }
 
-function collectFormedWords(
-  board: (PlacedTile | null)[][],
-  moves: MovePlacement[],
-): string[] {
-  const words = new Set<string>();
-
-  for (const move of moves) {
-    const horizontal = readWord(board, move.row, 0, 0, 1);
-    const vertical = readWord(board, 0, move.col, 1, 0);
-
-    const hWord = extractWordAt(board, move.row, move.col, 0, 1);
-    const vWord = extractWordAt(board, move.row, move.col, 1, 0);
-
-    if (hWord.length > 1) words.add(hWord);
-    if (vWord.length > 1) words.add(vWord);
-    if (hWord.length === 1 && vWord.length === 1) words.add(hWord);
-  }
-
-  return [...words];
-}
-
-function extractWordAt(
+function extractLetterUnitsAt(
   board: (PlacedTile | null)[][],
   row: number,
   col: number,
   dRow: number,
   dCol: number,
-): string {
+): string[] {
   let r = row;
   let c = col;
   while (getCell(board, r - dRow, c - dCol)) {
     r -= dRow;
     c -= dCol;
   }
-  return readWord(board, r, c, dRow, dCol);
+  return readLetterUnits(board, r, c, dRow, dCol);
+}
+
+/** Prefer LTR/TTB; if that is not in the lexicon, accept the reversed tile sequence. */
+export function canonicalWord(language: Language, units: string[]): string | null {
+  const forward = units.join("");
+  if (isValidWord(language, forward)) return forward;
+  const reverse = [...units].reverse().join("");
+  if (reverse !== forward && isValidWord(language, reverse)) return reverse;
+  return null;
+}
+
+function collectFormedWords(
+  board: (PlacedTile | null)[][],
+  moves: MovePlacement[],
+  language: Language,
+): { words: string[]; invalid?: string } {
+  const seen = new Set<string>();
+  const words: string[] = [];
+
+  for (const move of moves) {
+    const hUnits = extractLetterUnitsAt(board, move.row, move.col, 0, 1);
+    const vUnits = extractLetterUnitsAt(board, move.row, move.col, 1, 0);
+
+    const candidates: string[][] = [];
+    if (hUnits.length > 1) candidates.push(hUnits);
+    if (vUnits.length > 1) candidates.push(vUnits);
+    if (hUnits.length === 1 && vUnits.length === 1) candidates.push(hUnits);
+
+    for (const units of candidates) {
+      const forward = units.join("");
+      if (seen.has(forward)) continue;
+      seen.add(forward);
+
+      const canonical = canonicalWord(language, units);
+      if (!canonical) {
+        return { words: [...words, forward], invalid: forward };
+      }
+      words.push(canonical);
+    }
+  }
+
+  return { words };
 }
 
 export function validatePlacement(
@@ -181,11 +201,14 @@ export function validatePlacement(
     return { valid: false, error: "First word must cover center star", formedWords: [], placements: [] };
   }
 
-  const formedWords = collectFormedWords(nextBoard, moves);
-  for (const word of formedWords) {
-    if (!isValidWord(language, word)) {
-      return { valid: false, error: `Invalid word: ${word}`, formedWords, placements };
-    }
+  const { words: formedWords, invalid } = collectFormedWords(nextBoard, moves, language);
+  if (invalid) {
+    return {
+      valid: false,
+      error: `Invalid word: ${invalid}`,
+      formedWords,
+      placements,
+    };
   }
 
   return { valid: true, formedWords, placements };

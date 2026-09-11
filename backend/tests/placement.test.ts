@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createEmptyBoard, validatePlacement } from "../src/game/placement";
+import { canonicalWord, createEmptyBoard, validatePlacement } from "../src/game/placement";
 import type { Tile } from "../src/game/types";
 
 function makeTile(letter: string, id?: string): Tile {
@@ -60,5 +60,103 @@ describe("placement validation", () => {
       true,
     );
     expect(result.valid).toBe(false);
+  });
+
+  test("accepts Spanish HORNO top to bottom covering the star", () => {
+    const board = createEmptyBoard();
+    const rack = [
+      makeTile("H", "h"),
+      makeTile("O", "o1"),
+      makeTile("R", "r"),
+      makeTile("N", "n"),
+      makeTile("O", "o2"),
+    ];
+    const result = validatePlacement(
+      board,
+      [
+        { row: 5, col: 7, tileId: "h" },
+        { row: 6, col: 7, tileId: "o1" },
+        { row: 7, col: 7, tileId: "r" },
+        { row: 8, col: 7, tileId: "n" },
+        { row: 9, col: 7, tileId: "o2" },
+      ],
+      rack,
+      "es",
+      true,
+    );
+    expect(result.valid).toBe(true);
+    expect(result.formedWords).toContain("HORNO");
+  });
+
+  test("accepts Spanish HORNO when tiles read ONROH top to bottom", () => {
+    const board = createEmptyBoard();
+    const rack = [
+      makeTile("O", "o1"),
+      makeTile("N", "n"),
+      makeTile("R", "r"),
+      makeTile("O", "o2"),
+      makeTile("H", "h"),
+    ];
+    const result = validatePlacement(
+      board,
+      [
+        { row: 5, col: 7, tileId: "o1" },
+        { row: 6, col: 7, tileId: "n" },
+        { row: 7, col: 7, tileId: "r" },
+        { row: 8, col: 7, tileId: "o2" },
+        { row: 9, col: 7, tileId: "h" },
+      ],
+      rack,
+      "es",
+      true,
+    );
+    expect(result.valid).toBe(true);
+    expect(result.formedWords).toContain("HORNO");
+    expect(result.formedWords).not.toContain("ONROH");
+  });
+
+  test("rejects a line whose reverse is also not in the lexicon", () => {
+    const board = createEmptyBoard();
+    const rack = [makeTile("Q", "q1"), makeTile("X", "x"), makeTile("Q", "q2")];
+    const result = validatePlacement(
+      board,
+      [
+        { row: 7, col: 6, tileId: "q1" },
+        { row: 7, col: 7, tileId: "x" },
+        { row: 7, col: 8, tileId: "q2" },
+      ],
+      rack,
+      "es",
+      true,
+    );
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe("Invalid word: QXQ");
+  });
+
+  test("reverses CH/LL/RR as tile units, not characters", () => {
+    expect(canonicalWord("es", ["CH", "I", "C", "O"])).toBe("CHICO");
+    expect(canonicalWord("es", ["O", "C", "I", "CH"])).toBe("CHICO");
+
+    const board = createEmptyBoard();
+    const rack: Tile[] = [
+      { id: "o", letter: "O", points: 1, kind: "letter" },
+      { id: "c", letter: "C", points: 3, kind: "letter" },
+      { id: "i", letter: "I", points: 1, kind: "letter" },
+      { id: "ch", letter: "CH", points: 5, kind: "letter" },
+    ];
+    const result = validatePlacement(
+      board,
+      [
+        { row: 7, col: 5, tileId: "o" },
+        { row: 7, col: 6, tileId: "c" },
+        { row: 7, col: 7, tileId: "i" },
+        { row: 7, col: 8, tileId: "ch" },
+      ],
+      rack,
+      "es",
+      true,
+    );
+    expect(result.valid).toBe(true);
+    expect(result.formedWords).toContain("CHICO");
   });
 });

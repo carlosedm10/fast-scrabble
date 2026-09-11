@@ -134,7 +134,7 @@ export function Board({
                   cell === "dl" && "bg-cyan-900/30 text-cyan-300",
                   cell === "star" && "bg-brand-cyan/20 text-brand-cyan-light",
                   cell === "n" && "bg-brand-dark/80 text-white/25",
-                  hovered && "ring-2 ring-inset ring-brand-cyan-light bg-brand-cyan/30",
+                  hovered && "is-drop-target",
                 )}
               >
                 {mult}
