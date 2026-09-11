@@ -54,24 +54,34 @@ function applyPlacements(
   return { board: next, placements };
 }
 
-function isContiguousLine(moves: MovePlacement[]): boolean {
+function occupiesStraightFilledLine(
+  board: (PlacedTile | null)[][],
+  moves: MovePlacement[],
+): boolean {
   if (moves.length === 0) return false;
-  const rows = moves.map((m) => m.row);
-  const cols = moves.map((m) => m.col);
-  const sameRow = rows.every((r) => r === rows[0]);
-  const sameCol = cols.every((c) => c === cols[0]);
+  if (moves.length === 1) return true;
+
+  const sameRow = moves.every((m) => m.row === moves[0].row);
+  const sameCol = moves.every((m) => m.col === moves[0].col);
   if (!sameRow && !sameCol) return false;
 
   if (sameRow) {
-    const sorted = [...cols].sort((a, b) => a - b);
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i] - sorted[i - 1] !== 1) return false;
+    const row = moves[0].row;
+    const cols = moves.map((m) => m.col);
+    const min = Math.min(...cols);
+    const max = Math.max(...cols);
+    for (let c = min; c <= max; c++) {
+      if (!getCell(board, row, c)) return false;
     }
-  } else {
-    const sorted = [...rows].sort((a, b) => a - b);
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i] - sorted[i - 1] !== 1) return false;
-    }
+    return true;
+  }
+
+  const col = moves[0].col;
+  const rows = moves.map((m) => m.row);
+  const min = Math.min(...rows);
+  const max = Math.max(...rows);
+  for (let r = min; r <= max; r++) {
+    if (!getCell(board, r, col)) return false;
   }
   return true;
 }
@@ -184,13 +194,13 @@ export function validatePlacement(
     return { valid: false, error: "No tiles placed", formedWords: [], placements: [] };
   }
 
-  if (!isContiguousLine(moves)) {
-    return { valid: false, error: "Tiles must form a straight line", formedWords: [], placements: [] };
-  }
-
   const { board: nextBoard, placements, error } = applyPlacements(board, moves, rack);
   if (error) {
     return { valid: false, error, formedWords: [], placements: [] };
+  }
+
+  if (!occupiesStraightFilledLine(nextBoard, moves)) {
+    return { valid: false, error: "Tiles must form a straight line", formedWords: [], placements: [] };
   }
 
   if (!touchesExisting(board, moves)) {

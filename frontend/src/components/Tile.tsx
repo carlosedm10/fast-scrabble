@@ -14,7 +14,7 @@ interface TileProps {
   selected?: boolean;
   onClick?: () => void;
   onPointerDown?: (event: PointerEvent) => void;
-  size?: "fill" | "sm" | "md" | "lg";
+  size?: "fill" | "sm" | "md" | "lg" | "rack";
   displayLetter?: string;
   dragging?: boolean;
   popping?: boolean;
@@ -25,6 +25,7 @@ const sizes = {
   sm: "h-8 w-8 text-xs",
   md: "h-10 w-10 text-sm",
   lg: "h-12 w-12 text-base sm:h-14 sm:w-14",
+  rack: "h-11 w-11 text-sm sm:h-14 sm:w-14 sm:text-base",
 };
 
 export function Tile({

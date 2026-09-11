@@ -46,6 +46,24 @@ describe("placement validation", () => {
     expect(result.valid).toBe(false);
   });
 
+  test("allows new tiles when existing tiles fill the gap", () => {
+    const board = createEmptyBoard();
+    board[7][7] = { row: 7, col: 7, tile: makeTile("A", "a-board"), letter: "A" };
+    const rack = [makeTile("C"), makeTile("T")];
+    const result = validatePlacement(
+      board,
+      [
+        { row: 7, col: 6, tileId: "C" },
+        { row: 7, col: 8, tileId: "T" },
+      ],
+      rack,
+      "en",
+      false,
+    );
+    expect(result.valid).toBe(true);
+    expect(result.formedWords).toContain("CAT");
+  });
+
   test("rejects non-contiguous line", () => {
     const board = createEmptyBoard();
     const rack = [makeTile("C"), makeTile("A"), makeTile("T")];
