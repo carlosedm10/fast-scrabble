@@ -23,6 +23,8 @@ export interface RoomView {
   status: "waiting" | "playing" | "finished";
   currentPlayerIndex: number;
   hostPlayerId: string;
+  maxPlayers: 2 | 3 | 4;
+  lastMoveAt?: string;
   bagCount: number;
   board: (PlacedCell | null)[][] | null;
   players: PlayerView[];

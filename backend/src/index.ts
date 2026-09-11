@@ -1,8 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { Server } from "socket.io";
-import { bootstrapDb } from "./socket";
-import { registerSocketHandlers } from "./socket";
+import { bootstrapDb, registerSocketHandlers, startExpiryJob } from "./socket";
 import { getDictionarySize } from "./game/dictionary";
 
 const PORT = Number(process.env.PORT ?? 8000);
@@ -49,6 +48,7 @@ const io = new Server(server, {
 });
 
 registerSocketHandlers(io);
+startExpiryJob(io);
 
 await fastify.listen({ port: PORT, host: "0.0.0.0" });
 console.log(`Server listening on port ${PORT}`);

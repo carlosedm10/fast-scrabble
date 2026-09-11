@@ -43,7 +43,9 @@ export interface GameRoom {
   bag: Tile[];
   currentPlayerIndex: number;
   hostPlayerId: string;
+  maxPlayers: 2 | 3 | 4;
   createdAt: string;
+  lastMoveAt: string;
 }
 
 export interface BoardCell {

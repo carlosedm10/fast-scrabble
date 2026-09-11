@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Gamepad2, Globe, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,50 +9,69 @@ import { getSocket } from "@/lib/socket";
 import { saveSession } from "@/lib/storage";
 import type { Language } from "@/types/game";
 
+type MaxPlayers = 2 | 3 | 4;
+
 export function HomePage() {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const [nickname, setNickname] = useState("");
   const [roomCode, setRoomCode] = useState("");
-  const [language, setLanguage] = useState<Language>("es");
+  const [language, setLanguage] = useState<Language>((i18n.language as Language) || "es");
+  const [maxPlayers, setMaxPlayers] = useState<MaxPlayers>(2);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const changeLanguage = (lang: Language) => {
+    setLanguage(lang);
+    void i18n.changeLanguage(lang);
+  };
+
   const handleCreate = () => {
     if (!nickname.trim()) {
-      setError("Enter a nickname");
+      setError(t("errorNickname"));
       return;
     }
     setLoading(true);
     setError("");
     const socket = getSocket();
-    socket.emit("room:create", { nickname: nickname.trim(), language }, (res: { ok: boolean; token?: string; room?: { code: string }; error?: string }) => {
-      setLoading(false);
-      if (!res.ok || !res.token || !res.room) {
-        setError(res.error ?? "Failed to create room");
-        return;
-      }
-      saveSession(res.token, nickname.trim(), res.room.code);
-      navigate(`/p/${res.room.code}`);
-    });
+    socket.emit(
+      "room:create",
+      { nickname: nickname.trim(), language, maxPlayers },
+      (res: { ok: boolean; token?: string; room?: { code: string }; error?: string }) => {
+        setLoading(false);
+        if (!res.ok || !res.token || !res.room) {
+          setError(res.error ?? t("errorCreate"));
+          return;
+        }
+        saveSession(res.token, nickname.trim(), res.room.code);
+        navigate(`/p/${res.room.code}`);
+      },
+    );
   };
 
   const handleJoin = () => {
     if (!nickname.trim() || !roomCode.trim()) {
-      setError("Enter nickname and room code");
+      setError(t("errorNicknameAndCode"));
       return;
     }
     setLoading(true);
     setError("");
     const socket = getSocket();
-    socket.emit("room:join", { code: roomCode.trim().toUpperCase(), nickname: nickname.trim() }, (res: { ok: boolean; token?: string; room?: { code: string }; error?: string }) => {
-      setLoading(false);
-      if (!res.ok || !res.token || !res.room) {
-        setError(res.error ?? "Failed to join room");
-        return;
-      }
-      saveSession(res.token, nickname.trim(), res.room.code);
-      navigate(`/p/${res.room.code}`);
-    });
+    socket.emit(
+      "room:join",
+      { code: roomCode.trim().toUpperCase(), nickname: nickname.trim() },
+      (res: { ok: boolean; token?: string; room?: { code: string; language?: Language }; error?: string }) => {
+        setLoading(false);
+        if (!res.ok || !res.token || !res.room) {
+          const msg = res.error === "expired" ? t("expired") : (res.error ?? t("errorJoin"));
+          setError(msg);
+          return;
+        }
+        if (res.room.language) void i18n.changeLanguage(res.room.language);
+        saveSession(res.token, nickname.trim(), res.room.code);
+        navigate(`/p/${res.room.code}`);
+      },
+    );
   };
 
   return (
@@ -63,19 +83,19 @@ export function HomePage() {
             Fast Scrabble
           </h1>
         </div>
-        <p className="text-white/60">Multiplayer Scrabble — Spanish & English</p>
+        <p className="text-white/60">{t("tagline")}</p>
       </div>
 
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Play Now</CardTitle>
-          <CardDescription>No account needed — pick a nickname and go</CardDescription>
+          <CardTitle>{t("playNow")}</CardTitle>
+          <CardDescription>{t("playNowHint")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm text-white/70 mb-1 block">Nickname</label>
+            <label className="text-sm text-white/70 mb-1 block">{t("nickname")}</label>
             <Input
-              placeholder="Your nickname"
+              placeholder={t("nicknamePlaceholder")}
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               maxLength={20}
@@ -83,24 +103,42 @@ export function HomePage() {
           </div>
 
           <div>
-            <label className="text-sm text-white/70 mb-2 block flex items-center gap-1">
-              <Globe className="h-4 w-4" /> Language (for new games)
+            <label className="text-sm text-white/70 mb-2 flex items-center gap-1">
+              <Globe className="h-4 w-4" /> {t("languageLabel")}
             </label>
             <div className="flex gap-2">
               <Button
                 variant={language === "es" ? "default" : "outline"}
-                onClick={() => setLanguage("es")}
+                onClick={() => changeLanguage("es")}
                 className="flex-1"
               >
-                Español (FISE)
+                {t("languageEs")}
               </Button>
               <Button
                 variant={language === "en" ? "default" : "outline"}
-                onClick={() => setLanguage("en")}
+                onClick={() => changeLanguage("en")}
                 className="flex-1"
               >
-                English
+                {t("languageEn")}
               </Button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-white/70 mb-2 flex items-center gap-1">
+              <Users className="h-4 w-4" /> {t("playersLabel")}
+            </label>
+            <div className="flex gap-2">
+              {([2, 3, 4] as const).map((n) => (
+                <Button
+                  key={n}
+                  variant={maxPlayers === n ? "default" : "outline"}
+                  onClick={() => setMaxPlayers(n)}
+                  className="flex-1"
+                >
+                  {n}
+                </Button>
+              ))}
             </div>
           </div>
 
@@ -108,7 +146,7 @@ export function HomePage() {
 
           <Button onClick={handleCreate} disabled={loading} className="w-full" size="lg">
             <Users className="h-4 w-4" />
-            Create Game
+            {t("createGame")}
           </Button>
 
           <div className="relative">
@@ -116,20 +154,20 @@ export function HomePage() {
               <span className="w-full border-t border-brand-cyan/20" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-brand-surface px-2 text-white/40">or join</span>
+              <span className="bg-brand-surface px-2 text-white/40">{t("orJoin")}</span>
             </div>
           </div>
 
           <div className="flex gap-2">
             <Input
-              placeholder="Room code"
+              placeholder={t("roomCode")}
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
               maxLength={6}
               className="uppercase"
             />
             <Button variant="outline" onClick={handleJoin} disabled={loading}>
-              Join
+              {t("join")}
             </Button>
           </div>
         </CardContent>
