@@ -106,7 +106,7 @@ body {
   transform: translate(-50%, -72%) scale(1.22);
 }
 
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 639px) {
   .tile-ghost-lift {
     transform: translate(-50%, calc(-100% - 28px)) scale(1.22);
   }
