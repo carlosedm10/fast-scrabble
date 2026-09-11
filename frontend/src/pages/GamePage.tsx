@@ -356,14 +356,14 @@ export function GamePage() {
   const showFinished = room.status === "finished" || expired;
 
   return (
-    <div className="min-h-screen p-4 max-w-6xl mx-auto">
-      <header className="flex flex-wrap items-center justify-between gap-4 mb-4">
+    <div className="min-h-screen p-2 sm:p-4 max-w-6xl mx-auto">
+      <header className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-2 sm:mb-4">
         <div>
           <p className="text-xs uppercase tracking-wider text-white/50 mb-1">{t("shareCode")}</p>
           <button
             type="button"
             onClick={copyCode}
-            className="text-4xl sm:text-5xl font-mono font-bold tracking-[0.2em] text-brand-cyan-light hover:text-brand-cyan"
+            className="text-2xl sm:text-5xl font-mono font-bold tracking-[0.12em] sm:tracking-[0.2em] text-brand-cyan-light hover:text-brand-cyan"
             aria-label={t("copyCode")}
           >
             {room.code}
@@ -415,7 +415,7 @@ export function GamePage() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_280px] gap-6">
+      <div className="grid lg:grid-cols-[1fr_280px] gap-3 sm:gap-6">
         <div>
           <Board
             board={room.board}

@@ -2,8 +2,6 @@ import type { PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Tile, type TileData } from "./Tile";
 
-const BOARD_SIZE = 15;
-
 const MULTIPLIERS: Record<string, string> = {
   tw: "TW",
   dw: "DW",
@@ -69,23 +67,18 @@ export function Board({
   const getRackTile = (tileId: string) => rack.find((t) => t.id === tileId);
 
   return (
-    <div className="overflow-auto rounded-lg border border-brand-cyan/20 p-2 bg-brand-surface">
-      <div
-        className="grid gap-0.5 mx-auto"
-        style={{
-          gridTemplateColumns: `repeat(${BOARD_SIZE}, minmax(0, 1fr))`,
-          width: "min(100%, 600px)",
-        }}
-      >
+    <div className="scrabble-board-frame">
+      <div className="scrabble-board">
         {LAYOUT.map((row, r) =>
           row.map((cell, c) => {
             const placed = board?.[r]?.[c];
             const pending = getPending(r, c);
             const mult = cell === "n" ? null : MULTIPLIERS[cell];
+            const hovered = hoverCell?.row === r && hoverCell?.col === c;
 
             if (placed) {
               return (
-                <div key={`${r}-${c}`} className="aspect-square" data-board-cell data-row={r} data-col={c}>
+                <div key={`${r}-${c}`} className="scrabble-cell" data-board-cell data-row={r} data-col={c}>
                   <Tile
                     tile={{
                       id: `${r}-${c}`,
@@ -93,7 +86,7 @@ export function Board({
                       points: placed.tile.points,
                       kind: placed.tile.kind as "letter" | "blank",
                     }}
-                    size="sm"
+                    size="fill"
                     displayLetter={placed.letter}
                   />
                 </div>
@@ -106,14 +99,14 @@ export function Board({
                 return (
                   <div
                     key={`${r}-${c}`}
-                    className="aspect-square"
+                    className="scrabble-cell"
                     data-board-cell
                     data-row={r}
                     data-col={c}
                   >
                     <Tile
                       tile={rackTile as TileData}
-                      size="sm"
+                      size="fill"
                       displayLetter={pending.assignedLetter ?? rackTile.letter}
                       dragging={draggingTileId === pending.tileId}
                       popping={draggingTileId !== pending.tileId}
@@ -133,17 +126,15 @@ export function Board({
                 data-col={c}
                 onClick={() => onCellTap(r, c)}
                 className={cn(
-                  "aspect-square rounded text-[7px] font-semibold flex items-center justify-center",
-                  "border border-brand-cyan/10 hover:border-brand-cyan/40 transition-colors",
+                  "scrabble-cell flex items-center justify-center font-semibold leading-none",
+                  "border border-brand-cyan/15 text-[length:clamp(6px,1.8vw,10px)]",
                   cell === "tw" && "bg-red-900/40 text-red-300",
                   cell === "dw" && "bg-pink-900/30 text-pink-300",
                   cell === "tl" && "bg-blue-900/40 text-blue-300",
                   cell === "dl" && "bg-cyan-900/30 text-cyan-300",
                   cell === "star" && "bg-brand-cyan/20 text-brand-cyan-light",
-                  cell === "n" && "bg-brand-dark/50 text-white/20",
-                  hoverCell?.row === r &&
-                    hoverCell?.col === c &&
-                    "ring-2 ring-brand-cyan-light scale-105 bg-brand-cyan/25",
+                  cell === "n" && "bg-brand-dark/80 text-white/25",
+                  hovered && "ring-2 ring-inset ring-brand-cyan-light bg-brand-cyan/30",
                 )}
               >
                 {mult}
