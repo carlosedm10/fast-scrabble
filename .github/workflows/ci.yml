@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Create .env from template
+        run: cp .env_template .env
+
+      - name: Install backend dependencies
+        run: cd backend && bun install
+
+      - name: Install frontend dependencies
+        run: cd frontend && bun install
+
+      - name: Lint
+        run: make lint
+        env:
+          CI: true
+
+      - name: Test
+        run: make test
+        env:
+          CI: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        run: make build
+
+      - name: Up
+        run: make up
+
+      - name: Down
+        if: always()
+        run: make down
