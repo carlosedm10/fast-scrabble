@@ -2,7 +2,7 @@
 
 Real-time multiplayer Scrabble — Spanish (FISE) and English rules, 2–4 players, no accounts.
 
-**Play at:** `https://games.carloseduardo.es/scrabble` (when deployed)
+**Play at:** `https://games.carloseduardo.es/scrabble/` (when deployed)
 
 ## Quick start
 
