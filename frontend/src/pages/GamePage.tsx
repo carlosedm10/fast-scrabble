@@ -492,8 +492,8 @@ export function GamePage() {
         </div>
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_260px] md:items-start md:gap-6">
-          <div className="flex min-h-0 min-w-0 flex-col">
-            <div className="flex min-w-0 justify-center">
+          <div className="flex min-h-0 min-w-0 w-full flex-col">
+            <div className="flex w-full min-w-0 justify-center">
               <Board
                 board={room.board}
                 pendingPlacements={pendingPlacements}
