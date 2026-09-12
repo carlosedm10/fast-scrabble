@@ -53,10 +53,10 @@ body::before {
 }
 
 .scrabble-board-frame {
-  display: grid;
+  display: flex;
   min-width: 0;
   width: 100%;
-  place-items: center;
+  justify-content: center;
 }
 
 .scrabble-board {
@@ -66,8 +66,10 @@ body::before {
   grid-template-columns: repeat(15, minmax(0, 1fr));
   grid-template-rows: repeat(15, minmax(0, 1fr));
   aspect-ratio: 1 / 1;
-  width: min(calc(100vw - 1rem), calc(100dvh - 14.5rem), 600px);
-  max-width: 600px;
+  /* 100% of the padded column — never 100vw, which ignores page padding and
+     makes “safe” centering fall back to the start edge on phones. */
+  width: min(100%, calc(100dvh - 14.5rem), 600px);
+  max-width: 100%;
   margin-inline: auto;
   gap: clamp(1px, 0.35cqi, 3px);
   padding: clamp(2px, 0.55cqi, 8px);
@@ -188,10 +190,6 @@ body::before {
 }
 
 @media (max-width: 639px) {
-  .scrabble-board {
-    justify-self: center;
-  }
-
   .rack-zone {
     margin-top: 1.25rem;
   }
