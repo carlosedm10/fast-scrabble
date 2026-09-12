@@ -35,6 +35,7 @@
   "pass": "Pasar",
   "yourTurn": "Tu turno",
   "waitingTurn": "Turno de {{name}}",
+  "trialHint": "puedes probar en el tablero",
   "players": "Jugadores",
   "points": "pts",
   "you": "(tú)",

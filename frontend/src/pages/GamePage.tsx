@@ -126,6 +126,10 @@ export function GamePage() {
   const applyRoom = useCallback(
     (updated: RoomView) => {
       setRoom(updated);
+      setPendingPlacements((prev) => {
+        const next = prev.filter((placement) => !updated.board?.[placement.row]?.[placement.col]);
+        return next.length === prev.length ? prev : next;
+      });
       if (updated.language && updated.language !== i18n.language) {
         void i18n.changeLanguage(updated.language);
       }
@@ -194,7 +198,7 @@ export function GamePage() {
 
   const placeTileAt = useCallback(
     (row: number, col: number, tileId: string) => {
-      if (!isMyTurn || room?.status !== "playing") return;
+      if (room?.status !== "playing") return;
       if (room.board?.[row]?.[col]) return;
 
       const tile = rack.find((t) => t.id === tileId);
@@ -221,7 +225,7 @@ export function GamePage() {
       setSelectedTileId(null);
       setError("");
     },
-    [isMyTurn, rack, room],
+    [rack, room],
   );
 
   const handleCellTap = (row: number, col: number) => {
@@ -231,7 +235,7 @@ export function GamePage() {
 
   const beginDrag = (tileId: string, event: ReactPointerEvent, source: "rack" | "board" = "rack") => {
     if (room?.status === "finished") return;
-    const canPlace = Boolean(isMyTurn && room?.status === "playing");
+    const canPlace = room?.status === "playing";
     if (source === "board" && !canPlace) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
@@ -373,7 +377,7 @@ export function GamePage() {
   };
 
   const handlePlay = () => {
-    if (!code || !token || pendingPlacements.length === 0) return;
+    if (!isMyTurn || !code || !token || pendingPlacements.length === 0) return;
     const socket = getSocket();
     socket.emit("game:play", { code, token, moves: pendingPlacements }, (res: { ok: boolean; error?: string }) => {
       if (res.ok) {
@@ -566,9 +570,24 @@ export function GamePage() {
           )}
 
           {room.status === "playing" && !isMyTurn && (
-            <p className="text-center text-sm text-white/60">
-              {t("waitingTurn", { name: currentTurnName ?? "…" })}
-            </p>
+            <div className="flex flex-col items-center gap-1">
+              <p className="text-center text-sm text-white/60">
+                {t("waitingTurn", { name: currentTurnName ?? "…" })} · {t("trialHint")}
+              </p>
+              {pendingPlacements.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {preview && !preview.error && (
+                    <span className="font-semibold text-brand-cyan-light text-lg sm:text-2xl tabular-nums">
+                      {t("previewScore", { score: preview.score })}
+                    </span>
+                  )}
+                  <Button variant="outline" size="sm" onClick={handleUndoPending} aria-label={t("undo")}>
+                    <Undo2 className="h-4 w-4" />
+                    <span>{t("undo")}</span>
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
 
           {room.status === "waiting" && isHost && (

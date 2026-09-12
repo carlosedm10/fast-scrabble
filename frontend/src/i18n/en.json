@@ -35,6 +35,7 @@
   "pass": "Pass",
   "yourTurn": "Your turn",
   "waitingTurn": "{{name}}'s turn",
+  "trialHint": "you can try tiles on the board",
   "players": "Players",
   "points": "pts",
   "you": "(you)",
