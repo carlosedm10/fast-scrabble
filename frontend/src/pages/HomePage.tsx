@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Gamepad2, Globe, Users } from "lucide-react";
+import { Globe, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,9 +86,13 @@ export function HomePage() {
           <span className="h-1.5 w-1.5 rounded-full bg-[#c22030]" />
         </div>
         <div className="flex items-center justify-center gap-3 mb-2">
-          <span className="rounded-xl border border-brand-cyan/25 bg-brand-cyan/10 p-2 shadow-[0_0_28px_rgba(4,158,226,0.18)]">
-            <Gamepad2 className="h-8 w-8 text-brand-cyan-light" />
-          </span>
+          <img
+            src={`${import.meta.env.BASE_URL}icon-192.png`}
+            alt=""
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-xl border border-brand-cyan/25 shadow-[0_0_28px_rgba(4,158,226,0.18)]"
+          />
           <h1 className="text-4xl font-extrabold tracking-tight bg-linear-to-r from-white via-brand-cyan-light to-brand-cyan bg-clip-text text-transparent sm:text-5xl">
             Fast Scrabble
           </h1>
