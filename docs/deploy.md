@@ -1,6 +1,6 @@
 # Deploy — fast-scrabble
 
-Producción en el VPS Hetzner (`167.233.36.55`), servido en `https://games.carloseduardo.es/scrabble`.
+Producción en el VPS Hetzner (`167.233.36.55`), servido en `https://games.carloseduardo.es/scrabble/`.
 
 ## Layout del servidor
 
@@ -26,10 +26,11 @@ Browser → Caddy (edge) → 127.0.0.1:3200 (frontend)
 
 Rutas Caddy (`deploy/host/edge/sites/games.caddy`):
 
+- `/scrabble` → 308 `/scrabble/` (Vite `base` requires the trailing slash)
+- `/` → 302 `/scrabble/`
 - `/scrabble/api*` → `:8200`
 - `/scrabble/socket.io*` → `:8200`
 - `/scrabble*` → `:3200`
-- `/` → 302 `/scrabble`
 
 ## Secretos GitHub (repo `fast-scrabble`)
 
@@ -68,7 +69,7 @@ export DEPLOY_PATH=/opt/apps/fast-scrabble
    install -D -m 644 deploy/host/edge/sites/games.caddy /opt/apps/edge/sites/games.caddy
    cd /opt/apps/edge && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
    ```
-6. Probar: `https://games.carloseduardo.es/scrabble`
+6. Probar: `https://games.carloseduardo.es/scrabble/` (bare `/scrabble` 308s here)
 
 ## Qué hace `deploy/remote-deploy.sh`
 

@@ -1,4 +1,9 @@
 games.carloseduardo.es {
+	# Vite base is /scrabble/ — the bare path is a 404 in vite preview
+	@bareScrabble path /scrabble
+	redir @bareScrabble /scrabble/ 308
+	redir / /scrabble/ 302
+
 	# fast-scrabble API and WebSocket
 	handle /scrabble/api* {
 		reverse_proxy 127.0.0.1:8200
@@ -12,7 +17,4 @@ games.carloseduardo.es {
 	handle /scrabble* {
 		reverse_proxy 127.0.0.1:3200
 	}
-
-	# Redirect root to scrabble
-	redir / /scrabble 302
 }
