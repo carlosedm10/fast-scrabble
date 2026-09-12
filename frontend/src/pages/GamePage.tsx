@@ -421,84 +421,88 @@ export function GamePage() {
 
       <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[1fr_260px] lg:gap-6 lg:px-4">
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="flex-1 min-h-0 flex flex-col justify-end lg:justify-center">
-            {room.status !== "finished" && (
-              <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1.5 lg:hidden">
-                {room.players.map((p) => (
-                  <div
-                    key={p.id}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap",
-                      p.isCurrentTurn ? "bg-brand-cyan/20 ring-1 ring-brand-cyan" : "bg-brand-surface",
-                    )}
-                  >
-                    <span className="max-w-[5.5rem] truncate">
-                      {p.nickname}
-                      {p.isYou ? ` ${t("you")}` : ""}
-                    </span>
-                    <span className="font-mono text-brand-cyan-light">{p.score}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex justify-center px-1 pb-1">
-            <Board
-              board={room.board}
-              pendingPlacements={pendingPlacements}
-              rack={rack}
-              onCellTap={handleCellTap}
-              onPendingPointerDown={beginDrag}
-              draggingTileId={draggingTileId}
-              hoverCell={hoverCell}
-            />
-            </div>
-          </div>
-
-          <div className="play-dock shrink-0 sticky bottom-0 z-20 border-t border-brand-cyan/15 bg-brand-dark/95 px-2 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:px-0 sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:pt-3">
-            {room.status === "playing" && isMyTurn && (
-              <div className="flex items-center justify-center gap-2 mb-2">
-                {preview && !preview.error && pendingPlacements.length > 0 && (
-                  <span className="font-semibold text-brand-cyan-light text-lg sm:text-2xl tabular-nums">
-                    {t("previewScore", { score: preview.score })}
+          {room.status !== "finished" && (
+            <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1 lg:hidden">
+              {room.players.map((p) => (
+                <div
+                  key={p.id}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap",
+                    p.isCurrentTurn ? "bg-brand-cyan/20 ring-1 ring-brand-cyan" : "bg-brand-surface",
+                  )}
+                >
+                  <span className="max-w-[5.5rem] truncate">
+                    {p.nickname}
+                    {p.isYou ? ` ${t("you")}` : ""}
                   </span>
-                )}
-                <Button size="sm" onClick={handlePlay} disabled={pendingPlacements.length === 0}>
-                  {t("playWord")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
-                  <Undo2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t("undo")}</span>
-                </Button>
-                <Button variant="outline" size="sm" onClick={handlePass} aria-label={t("pass")}>
-                  <SkipForward className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t("pass")}</span>
-                </Button>
-              </div>
-            )}
+                  <span className="font-mono text-brand-cyan-light">{p.score}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-            {room.status === "playing" && !isMyTurn && (
-              <p className="mb-2 text-center text-sm text-white/60">
-                {t("waitingTurn", { name: currentTurnName ?? "…" })}
-              </p>
-            )}
+          <div className="flex-1 min-h-0 flex flex-col justify-end lg:justify-center">
+            <div className="shrink-0 px-2 py-1.5 sm:px-0">
+              {room.status === "playing" && isMyTurn && (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {preview && !preview.error && pendingPlacements.length > 0 && (
+                    <span className="font-semibold text-brand-cyan-light text-lg sm:text-2xl tabular-nums">
+                      {t("previewScore", { score: preview.score })}
+                    </span>
+                  )}
+                  <Button size="sm" onClick={handlePlay} disabled={pendingPlacements.length === 0}>
+                    {t("playWord")}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
+                    <Undo2 className="h-4 w-4" />
+                    <span>{t("undo")}</span>
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handlePass} aria-label={t("pass")}>
+                    <SkipForward className="h-4 w-4" />
+                    <span>{t("pass")}</span>
+                  </Button>
+                </div>
+              )}
 
-            {room.status === "waiting" && isHost && (
-              <div className="mb-2 text-center">
-                <Button onClick={() => setTtlDialog(true)} size="sm" className="sm:h-12 sm:px-8 sm:text-base" disabled={room.players.length < 2}>
-                  <Play className="h-4 w-4" />{" "}
-                  {t("startGame", { current: room.players.length, max: maxPlayers })}
-                </Button>
-              </div>
-            )}
+              {room.status === "playing" && !isMyTurn && (
+                <p className="text-center text-sm text-white/60">
+                  {t("waitingTurn", { name: currentTurnName ?? "…" })}
+                </p>
+              )}
 
-            {room.status === "waiting" && !isHost && (
-              <p className="mb-2 text-center text-sm text-white/60">
-                {t("waitingHost")} ({room.players.length}/{maxPlayers})
-              </p>
-            )}
+              {room.status === "waiting" && isHost && (
+                <div className="text-center">
+                  <Button onClick={() => setTtlDialog(true)} size="sm" className="sm:h-12 sm:px-8 sm:text-base" disabled={room.players.length < 2}>
+                    <Play className="h-4 w-4" />{" "}
+                    {t("startGame", { current: room.players.length, max: maxPlayers })}
+                  </Button>
+                </div>
+              )}
+
+              {room.status === "waiting" && !isHost && (
+                <p className="text-center text-sm text-white/60">
+                  {t("waitingHost")} ({room.players.length}/{maxPlayers})
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-center px-1">
+              <Board
+                board={room.board}
+                pendingPlacements={pendingPlacements}
+                rack={rack}
+                onCellTap={handleCellTap}
+                onPendingPointerDown={beginDrag}
+                draggingTileId={draggingTileId}
+                hoverCell={hoverCell}
+              />
+            </div>
 
             {rack.length > 0 && room.status !== "finished" && (
-              <div data-rack>
+              <div
+                data-rack
+                className="shrink-0 sticky bottom-0 z-20 border-t border-brand-cyan/15 bg-brand-dark/95 px-2 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:pt-2"
+              >
                 <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
                   {rackTiles.map((tile) => (
                     <Tile
