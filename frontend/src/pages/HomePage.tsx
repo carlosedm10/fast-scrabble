@@ -75,18 +75,29 @@ export function HomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="mb-8 text-center">
+    <div className="relative min-h-screen overflow-hidden flex flex-col items-center justify-center p-4 sm:p-8">
+      <div className="pointer-events-none absolute left-[8%] top-[18%] h-px w-32 bg-linear-to-r from-transparent to-brand-cyan/70 sm:w-64" />
+      <div className="pointer-events-none absolute bottom-[16%] right-[6%] h-px w-40 bg-linear-to-l from-transparent to-[#c22030]/70 sm:w-72" />
+
+      <div className="relative mb-8 text-center">
+        <div aria-hidden="true" className="mx-auto mb-4 flex w-fit gap-1.5 rounded-full border border-brand-cyan/25 bg-brand-cyan/10 px-3 py-2 backdrop-blur">
+          <span className="h-1.5 w-1.5 rounded-full bg-brand-cyan-light" />
+          <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+          <span className="h-1.5 w-1.5 rounded-full bg-[#c22030]" />
+        </div>
         <div className="flex items-center justify-center gap-3 mb-2">
-          <Gamepad2 className="h-10 w-10 text-brand-cyan" />
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-brand-cyan to-brand-cyan-light bg-clip-text text-transparent">
+          <span className="rounded-xl border border-brand-cyan/25 bg-brand-cyan/10 p-2 shadow-[0_0_28px_rgba(4,158,226,0.18)]">
+            <Gamepad2 className="h-8 w-8 text-brand-cyan-light" />
+          </span>
+          <h1 className="text-4xl font-extrabold tracking-tight bg-linear-to-r from-white via-brand-cyan-light to-brand-cyan bg-clip-text text-transparent sm:text-5xl">
             Fast Scrabble
           </h1>
         </div>
-        <p className="text-white/60">{t("tagline")}</p>
+        <p className="mx-auto max-w-sm text-white/60">{t("tagline")}</p>
       </div>
 
-      <Card className="w-full max-w-md">
+      <Card className="relative w-full max-w-md overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-linear-to-r from-transparent via-brand-cyan-light/80 to-transparent" />
         <CardHeader>
           <CardTitle>{t("playNow")}</CardTitle>
           <CardDescription>{t("playNowHint")}</CardDescription>

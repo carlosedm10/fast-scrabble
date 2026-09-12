@@ -126,14 +126,14 @@ export function Board({
                 data-col={c}
                 onClick={() => onCellTap(r, c)}
                 className={cn(
-                  "scrabble-cell flex items-center justify-center font-semibold leading-none",
-                  "border border-brand-cyan/15 text-[length:clamp(6px,1.8vw,10px)]",
-                  cell === "tw" && "bg-red-900/40 text-red-300",
-                  cell === "dw" && "bg-pink-900/30 text-pink-300",
-                  cell === "tl" && "bg-blue-900/40 text-blue-300",
-                  cell === "dl" && "bg-cyan-900/30 text-cyan-300",
-                  cell === "star" && "bg-brand-cyan/20 text-brand-cyan-light",
-                  cell === "n" && "bg-brand-dark/80 text-white/25",
+                  "scrabble-cell scrabble-cell-mult flex items-center justify-center font-semibold",
+                  "border border-white/8 transition-colors",
+                  cell === "tw" && "bg-[#7d1524] text-red-100",
+                  cell === "dw" && "bg-[#5d2346] text-pink-100",
+                  cell === "tl" && "bg-[#124978] text-blue-100",
+                  cell === "dl" && "bg-[#0d5968] text-cyan-100",
+                  cell === "star" && "bg-brand-cyan/35 text-white",
+                  cell === "n" && "bg-[#111b2c] text-white/30 hover:bg-[#16263d]",
                   hovered && "is-drop-target",
                 )}
               >

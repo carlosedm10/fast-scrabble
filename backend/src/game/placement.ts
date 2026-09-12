@@ -141,15 +141,6 @@ function extractLetterUnitsAt(
   return readLetterUnits(board, r, c, dRow, dCol);
 }
 
-/** Prefer LTR/TTB; if that is not in the lexicon, accept the reversed tile sequence. */
-export function canonicalWord(language: Language, units: string[]): string | null {
-  const forward = units.join("");
-  if (isValidWord(language, forward)) return forward;
-  const reverse = [...units].reverse().join("");
-  if (reverse !== forward && isValidWord(language, reverse)) return reverse;
-  return null;
-}
-
 function collectFormedWords(
   board: (PlacedTile | null)[][],
   moves: MovePlacement[],
@@ -168,15 +159,14 @@ function collectFormedWords(
     if (hUnits.length === 1 && vUnits.length === 1) candidates.push(hUnits);
 
     for (const units of candidates) {
-      const forward = units.join("");
-      if (seen.has(forward)) continue;
-      seen.add(forward);
+      const word = units.join("");
+      if (seen.has(word)) continue;
+      seen.add(word);
 
-      const canonical = canonicalWord(language, units);
-      if (!canonical) {
-        return { words: [...words, forward], invalid: forward };
+      if (!isValidWord(language, word)) {
+        return { words: [...words, word], invalid: word };
       }
-      words.push(canonical);
+      words.push(word);
     }
   }
 

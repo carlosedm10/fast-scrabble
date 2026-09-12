@@ -26,6 +26,7 @@ repos/
 .next/
 .turbo/
 out/
+core
 
 # Docker
 postgres_data_*/

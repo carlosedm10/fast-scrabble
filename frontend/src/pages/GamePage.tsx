@@ -358,34 +358,34 @@ export function GamePage() {
   const rackTiles = rack.filter((tile) => !pendingPlacements.some((p) => p.tileId === tile.id));
 
   return (
-    <div className="min-h-dvh max-w-6xl mx-auto flex flex-col">
-      <header className="shrink-0 flex items-center gap-2 px-2 pt-2 pb-1 sm:px-4 sm:pt-4 sm:pb-2">
-        <div className="min-w-0 flex-1">
+    <div className="min-h-dvh max-w-6xl mx-auto flex flex-col px-4 sm:px-6">
+      <header className="mt-2 shrink-0 flex flex-col gap-3 rounded-xl border border-white/8 bg-brand-surface/65 px-3 py-2 shadow-lg shadow-black/15 backdrop-blur-xl sm:mt-4 sm:px-4 sm:py-3 md:flex-row md:items-center md:gap-4">
+        <div className="min-w-0 md:flex-1">
           <button
             type="button"
             onClick={copyCode}
-            className="text-xl sm:text-5xl font-mono font-bold tracking-[0.12em] sm:tracking-[0.2em] text-brand-cyan-light hover:text-brand-cyan leading-none"
+            className="max-w-full truncate text-left text-xl font-mono font-bold tracking-[0.12em] text-brand-cyan-light hover:text-brand-cyan leading-none sm:text-2xl sm:tracking-[0.14em] md:text-4xl md:tracking-[0.18em] lg:text-5xl lg:tracking-[0.2em]"
             aria-label={t("copyCode")}
           >
             {room.code}
           </button>
-          <p className="text-[11px] sm:text-sm text-white/50 mt-0.5 truncate">
+          <p className="text-[11px] text-white/50 mt-0.5 truncate sm:text-xs md:text-sm">
             {room.language === "es" ? t("languageEs") : t("languageEn")} · {statusLabel(room.status, t)}
             {room.bagCount > 0 && ` · ${t("tilesLeft", { count: room.bagCount })}`}
           </p>
         </div>
-        <div className="flex shrink-0 gap-1 sm:gap-2">
-          <Button variant="outline" size="sm" className="px-2 sm:px-3" onClick={copyCode} aria-label={t("copyCode")}>
+        <div className="flex shrink-0 flex-wrap justify-end gap-1 md:gap-2">
+          <Button variant="outline" size="sm" className="px-2 md:px-3" onClick={copyCode} aria-label={t("copyCode")}>
             <Copy className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("copyCode")}</span>
+            <span className="hidden md:inline">{t("copyCode")}</span>
           </Button>
-          <Button variant="outline" size="sm" className="px-2 sm:px-3" onClick={copyLink} aria-label={t("copyLink")}>
+          <Button variant="outline" size="sm" className="px-2 md:px-3" onClick={copyLink} aria-label={t("copyLink")}>
             <Link2 className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("copyLink")}</span>
+            <span className="hidden md:inline">{t("copyLink")}</span>
           </Button>
-          <Button variant="ghost" size="sm" className="px-2 sm:px-3" onClick={handleLeave} aria-label={t("leave")}>
+          <Button variant="ghost" size="sm" className="px-2 md:px-3" onClick={handleLeave} aria-label={t("leave")}>
             <LogOut className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("leave")}</span>
+            <span className="hidden md:inline">{t("leave")}</span>
           </Button>
         </div>
       </header>
@@ -402,7 +402,7 @@ export function GamePage() {
       )}
 
       {showFinished && (
-        <div className="mx-2 sm:mx-4 mb-3 rounded-xl border border-brand-cyan/30 bg-brand-surface p-4">
+        <div className="mb-3 rounded-xl border border-brand-cyan/30 bg-brand-surface p-4">
           <h2 className="font-semibold text-brand-cyan-light mb-3">{t("finalRanking")}</h2>
           <ol className="space-y-2">
             {rankedPlayers.map((p, i) => (
@@ -419,74 +419,81 @@ export function GamePage() {
         </div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[1fr_260px] lg:gap-6 lg:px-4">
-        <div className="flex-1 min-h-0 flex flex-col">
-          {room.status !== "finished" && (
-            <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1 pt-0.5 lg:hidden">
-              {room.players.map((p) => (
-                <div
-                  key={p.id}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs whitespace-nowrap",
-                    p.isCurrentTurn ? "bg-brand-cyan/20 ring-1 ring-brand-cyan" : "bg-brand-surface",
-                  )}
-                >
-                  <span className="max-w-[5.5rem] truncate">
-                    {p.nickname}
-                    {p.isYou ? ` ${t("you")}` : ""}
-                  </span>
-                  <span className="font-mono text-brand-cyan-light">{p.score}</span>
-                </div>
-              ))}
+      <div className="mt-3 flex min-h-0 min-w-0 flex-1 flex-col sm:mt-4">
+        {room.status !== "finished" && (
+          <div
+            className={cn(
+              "mb-2 grid shrink-0 gap-2 md:hidden",
+              room.players.length <= 2 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3",
+            )}
+          >
+            {room.players.map((p) => (
+              <div
+                key={p.id}
+                className={cn(
+                  "flex min-w-0 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs",
+                  p.isCurrentTurn
+                    ? "border-brand-cyan/40 bg-brand-cyan/15 ring-1 ring-brand-cyan/60"
+                    : "border-white/8 bg-brand-surface/80",
+                )}
+              >
+                <span className="min-w-0 truncate font-medium">
+                  {p.nickname}
+                  {p.isYou ? ` ${t("you")}` : ""}
+                </span>
+                <span className="shrink-0 font-mono text-brand-cyan-light tabular-nums">{p.score}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="shrink-0 py-1 sm:py-2">
+          {room.status === "playing" && isMyTurn && (
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {preview && !preview.error && pendingPlacements.length > 0 && (
+                <span className="font-semibold text-brand-cyan-light text-lg sm:text-2xl tabular-nums">
+                  {t("previewScore", { score: preview.score })}
+                </span>
+              )}
+              <Button size="sm" onClick={handlePlay} disabled={pendingPlacements.length === 0}>
+                {t("playWord")}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
+                <Undo2 className="h-4 w-4" />
+                <span>{t("undo")}</span>
+              </Button>
+              <Button variant="outline" size="sm" onClick={handlePass} aria-label={t("pass")}>
+                <SkipForward className="h-4 w-4" />
+                <span>{t("pass")}</span>
+              </Button>
             </div>
           )}
 
-          <div className="flex flex-col lg:flex-1 lg:justify-center lg:min-h-0">
-            <div className="shrink-0 px-2 py-1 sm:px-0 sm:py-1.5">
-              {room.status === "playing" && isMyTurn && (
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  {preview && !preview.error && pendingPlacements.length > 0 && (
-                    <span className="font-semibold text-brand-cyan-light text-lg sm:text-2xl tabular-nums">
-                      {t("previewScore", { score: preview.score })}
-                    </span>
-                  )}
-                  <Button size="sm" onClick={handlePlay} disabled={pendingPlacements.length === 0}>
-                    {t("playWord")}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
-                    <Undo2 className="h-4 w-4" />
-                    <span>{t("undo")}</span>
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handlePass} aria-label={t("pass")}>
-                    <SkipForward className="h-4 w-4" />
-                    <span>{t("pass")}</span>
-                  </Button>
-                </div>
-              )}
+          {room.status === "playing" && !isMyTurn && (
+            <p className="text-center text-sm text-white/60">
+              {t("waitingTurn", { name: currentTurnName ?? "…" })}
+            </p>
+          )}
 
-              {room.status === "playing" && !isMyTurn && (
-                <p className="text-center text-sm text-white/60">
-                  {t("waitingTurn", { name: currentTurnName ?? "…" })}
-                </p>
-              )}
-
-              {room.status === "waiting" && isHost && (
-                <div className="text-center">
-                  <Button onClick={() => setTtlDialog(true)} size="sm" className="sm:h-12 sm:px-8 sm:text-base" disabled={room.players.length < 2}>
-                    <Play className="h-4 w-4" />{" "}
-                    {t("startGame", { current: room.players.length, max: maxPlayers })}
-                  </Button>
-                </div>
-              )}
-
-              {room.status === "waiting" && !isHost && (
-                <p className="text-center text-sm text-white/60">
-                  {t("waitingHost")} ({room.players.length}/{maxPlayers})
-                </p>
-              )}
+          {room.status === "waiting" && isHost && (
+            <div className="text-center">
+              <Button onClick={() => setTtlDialog(true)} size="sm" className="sm:h-12 sm:px-8 sm:text-base" disabled={room.players.length < 2}>
+                <Play className="h-4 w-4" />{" "}
+                {t("startGame", { current: room.players.length, max: maxPlayers })}
+              </Button>
             </div>
+          )}
 
-            <div className="flex justify-center px-1">
+          {room.status === "waiting" && !isHost && (
+            <p className="text-center text-sm text-white/60">
+              {t("waitingHost")} ({room.players.length}/{maxPlayers})
+            </p>
+          )}
+        </div>
+
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_260px] md:items-start md:gap-6">
+          <div className="flex min-h-0 min-w-0 flex-col">
+            <div className="flex min-w-0 justify-center">
               <Board
                 board={room.board}
                 pendingPlacements={pendingPlacements}
@@ -501,37 +508,39 @@ export function GamePage() {
             {rack.length > 0 && room.status !== "finished" && (
               <div
                 data-rack
-                className="shrink-0 sticky bottom-0 z-20 border-t border-brand-cyan/15 bg-brand-dark/95 px-2 pt-1.5 pb-[max(0.4rem,env(safe-area-inset-bottom))] backdrop-blur-sm sm:border-0 sm:bg-transparent sm:backdrop-blur-none sm:static sm:pt-2"
+                className="rack-zone shrink-0 sticky bottom-0 z-20 -mx-4 bg-[#05070de8] px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:mx-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none sm:static sm:pt-3"
               >
-                <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
-                  {rackTiles.map((tile) => (
-                    <Tile
-                      key={tile.id}
-                      tile={tile}
-                      selected={selectedTileId === tile.id}
-                      dragging={draggingTileId === tile.id}
-                      onPointerDown={(event) => beginDrag(tile.id, event)}
-                      size="rack"
-                    />
-                  ))}
+                <div className="tile-rack">
+                  <div className="tile-rack-tiles flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                    {rackTiles.map((tile) => (
+                      <Tile
+                        key={tile.id}
+                        tile={tile}
+                        selected={selectedTileId === tile.id}
+                        dragging={draggingTileId === tile.id}
+                        onPointerDown={(event) => beginDrag(tile.id, event)}
+                        size="rack"
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        <aside className="hidden lg:block space-y-4 pb-4">
-          <div className="rounded-xl border border-brand-cyan/20 bg-brand-surface p-4">
-            <h2 className="font-semibold mb-3 text-brand-cyan-light">
-              {t("players")} · {room.players.length}/{maxPlayers}
-            </h2>
-            <ul className="space-y-2">
-              {room.players.map((p) => (
-                <PlayerRow key={p.id} player={p} hostId={room.hostPlayerId} t={t} />
-              ))}
-            </ul>
-          </div>
-        </aside>
+          <aside className="hidden space-y-4 pb-4 md:block md:sticky md:top-4 md:self-start">
+            <div className="rounded-xl border border-brand-cyan/20 bg-brand-surface p-4">
+              <h2 className="font-semibold mb-3 text-brand-cyan-light">
+                {t("players")} · {room.players.length}/{maxPlayers}
+              </h2>
+              <ul className="space-y-2">
+                {room.players.map((p) => (
+                  <PlayerRow key={p.id} player={p} hostId={room.hostPlayerId} t={t} />
+                ))}
+              </ul>
+            </div>
+          </aside>
+        </div>
       </div>
 
       <Dialog open={!!wildcardDialog} onOpenChange={() => setWildcardDialog(null)}>
