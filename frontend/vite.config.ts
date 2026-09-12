@@ -34,9 +34,23 @@ function redirectBareBase(): Plugin {
   };
 }
 
+/** Vite prefixes `base` onto HTML URLs that already include `%BASE_URL%`. */
+function collapseDoubleBase(): Plugin {
+  const doubled = `${APP_BASE}${APP_BASE.slice(1)}`;
+  return {
+    name: "collapse-double-base",
+    transformIndexHtml: {
+      order: "post",
+      handler(html) {
+        return html.replaceAll(doubled, APP_BASE);
+      },
+    },
+  };
+}
+
 export default defineConfig({
   base: APP_BASE,
-  plugins: [redirectBareBase(), react(), tailwindcss()],
+  plugins: [redirectBareBase(), collapseDoubleBase(), react(), tailwindcss()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
