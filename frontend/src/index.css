@@ -233,13 +233,35 @@ body::before {
 }
 
 .tile-ghost-lift {
+  position: relative;
   filter: drop-shadow(0 18px 22px rgba(0, 0, 0, 0.55));
   transform: translate(-50%, -72%) scale(1.22);
 }
 
+.tile-ghost-aim {
+  display: none;
+}
+
+/* Finger sits on the jiggling tile; the aim pip marks the drop cell 72px above. */
 @media (pointer: coarse), (max-width: 639px) {
   .tile-ghost-lift {
-    transform: translate(-50%, calc(-100% - 28px)) scale(1.22);
+    transform: translate(-50%, -50%) scale(1.22);
+  }
+
+  .tile-ghost-aim {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 1;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: var(--color-brand-cyan-light);
+    box-shadow:
+      0 0 0 2px #05070d,
+      0 0 10px var(--color-brand-cyan);
+    transform: translate(-50%, calc(-50% - 72px));
   }
 }
 

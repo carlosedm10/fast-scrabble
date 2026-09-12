@@ -29,6 +29,7 @@ export function DragTileGhost({ tile, displayLetter, x, y }: DragTileGhostProps)
       className="fixed left-0 top-0 z-[200] pointer-events-none"
       style={{ transform: `translate3d(${x}px, ${y}px, 0)` }}
     >
+      <div className="tile-ghost-aim" aria-hidden />
       <div className="tile-ghost-lift">
         <div className="tile-jiggle">
           <Tile tile={tile} size="lg" displayLetter={displayLetter} />
