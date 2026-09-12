@@ -66,8 +66,7 @@ body::before {
   grid-template-columns: repeat(15, minmax(0, 1fr));
   grid-template-rows: repeat(15, minmax(0, 1fr));
   aspect-ratio: 1 / 1;
-  /* 100% of the padded column — never 100vw, which ignores page padding and
-     makes “safe” centering fall back to the start edge on phones. */
+  /* Size against the padded column, not 100vw, so leftover space stays equal. */
   width: min(100%, calc(100dvh - 14.5rem), 600px);
   max-width: 100%;
   margin-inline: auto;
