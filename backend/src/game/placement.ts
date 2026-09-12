@@ -54,24 +54,34 @@ function applyPlacements(
   return { board: next, placements };
 }
 
-function isContiguousLine(moves: MovePlacement[]): boolean {
+function occupiesStraightFilledLine(
+  board: (PlacedTile | null)[][],
+  moves: MovePlacement[],
+): boolean {
   if (moves.length === 0) return false;
-  const rows = moves.map((m) => m.row);
-  const cols = moves.map((m) => m.col);
-  const sameRow = rows.every((r) => r === rows[0]);
-  const sameCol = cols.every((c) => c === cols[0]);
+  if (moves.length === 1) return true;
+
+  const sameRow = moves.every((m) => m.row === moves[0].row);
+  const sameCol = moves.every((m) => m.col === moves[0].col);
   if (!sameRow && !sameCol) return false;
 
   if (sameRow) {
-    const sorted = [...cols].sort((a, b) => a - b);
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i] - sorted[i - 1] !== 1) return false;
+    const row = moves[0].row;
+    const cols = moves.map((m) => m.col);
+    const min = Math.min(...cols);
+    const max = Math.max(...cols);
+    for (let c = min; c <= max; c++) {
+      if (!getCell(board, row, c)) return false;
     }
-  } else {
-    const sorted = [...rows].sort((a, b) => a - b);
-    for (let i = 1; i < sorted.length; i++) {
-      if (sorted[i] - sorted[i - 1] !== 1) return false;
-    }
+    return true;
+  }
+
+  const col = moves[0].col;
+  const rows = moves.map((m) => m.row);
+  const min = Math.min(...rows);
+  const max = Math.max(...rows);
+  for (let r = min; r <= max; r++) {
+    if (!getCell(board, r, col)) return false;
   }
   return true;
 }
@@ -97,60 +107,70 @@ function touchesExisting(board: (PlacedTile | null)[][] , moves: MovePlacement[]
   return false;
 }
 
-function readWord(
+function readLetterUnits(
   board: (PlacedTile | null)[][],
   startRow: number,
   startCol: number,
   dRow: number,
   dCol: number,
-): string {
-  let letters = "";
+): string[] {
+  const units: string[] = [];
   let r = startRow;
   let c = startCol;
   while (getCell(board, r, c)) {
-    const cell = getCell(board, r, c)!;
-    letters += cell.letter;
+    units.push(getCell(board, r, c)!.letter);
     r += dRow;
     c += dCol;
   }
-  return letters;
+  return units;
 }
 
-function collectFormedWords(
-  board: (PlacedTile | null)[][],
-  moves: MovePlacement[],
-): string[] {
-  const words = new Set<string>();
-
-  for (const move of moves) {
-    const horizontal = readWord(board, move.row, 0, 0, 1);
-    const vertical = readWord(board, 0, move.col, 1, 0);
-
-    const hWord = extractWordAt(board, move.row, move.col, 0, 1);
-    const vWord = extractWordAt(board, move.row, move.col, 1, 0);
-
-    if (hWord.length > 1) words.add(hWord);
-    if (vWord.length > 1) words.add(vWord);
-    if (hWord.length === 1 && vWord.length === 1) words.add(hWord);
-  }
-
-  return [...words];
-}
-
-function extractWordAt(
+function extractLetterUnitsAt(
   board: (PlacedTile | null)[][],
   row: number,
   col: number,
   dRow: number,
   dCol: number,
-): string {
+): string[] {
   let r = row;
   let c = col;
   while (getCell(board, r - dRow, c - dCol)) {
     r -= dRow;
     c -= dCol;
   }
-  return readWord(board, r, c, dRow, dCol);
+  return readLetterUnits(board, r, c, dRow, dCol);
+}
+
+function collectFormedWords(
+  board: (PlacedTile | null)[][],
+  moves: MovePlacement[],
+  language: Language,
+): { words: string[]; invalid?: string } {
+  const seen = new Set<string>();
+  const words: string[] = [];
+
+  for (const move of moves) {
+    const hUnits = extractLetterUnitsAt(board, move.row, move.col, 0, 1);
+    const vUnits = extractLetterUnitsAt(board, move.row, move.col, 1, 0);
+
+    const candidates: string[][] = [];
+    if (hUnits.length > 1) candidates.push(hUnits);
+    if (vUnits.length > 1) candidates.push(vUnits);
+    if (hUnits.length === 1 && vUnits.length === 1) candidates.push(hUnits);
+
+    for (const units of candidates) {
+      const word = units.join("");
+      if (seen.has(word)) continue;
+      seen.add(word);
+
+      if (!isValidWord(language, word)) {
+        return { words: [...words, word], invalid: word };
+      }
+      words.push(word);
+    }
+  }
+
+  return { words };
 }
 
 export function validatePlacement(
@@ -164,13 +184,13 @@ export function validatePlacement(
     return { valid: false, error: "No tiles placed", formedWords: [], placements: [] };
   }
 
-  if (!isContiguousLine(moves)) {
-    return { valid: false, error: "Tiles must form a straight line", formedWords: [], placements: [] };
-  }
-
   const { board: nextBoard, placements, error } = applyPlacements(board, moves, rack);
   if (error) {
     return { valid: false, error, formedWords: [], placements: [] };
+  }
+
+  if (!occupiesStraightFilledLine(nextBoard, moves)) {
+    return { valid: false, error: "Tiles must form a straight line", formedWords: [], placements: [] };
   }
 
   if (!touchesExisting(board, moves)) {
@@ -181,11 +201,14 @@ export function validatePlacement(
     return { valid: false, error: "First word must cover center star", formedWords: [], placements: [] };
   }
 
-  const formedWords = collectFormedWords(nextBoard, moves);
-  for (const word of formedWords) {
-    if (!isValidWord(language, word)) {
-      return { valid: false, error: `Invalid word: ${word}`, formedWords, placements };
-    }
+  const { words: formedWords, invalid } = collectFormedWords(nextBoard, moves, language);
+  if (invalid) {
+    return {
+      valid: false,
+      error: `Invalid word: ${invalid}`,
+      formedWords,
+      placements,
+    };
   }
 
   return { valid: true, formedWords, placements };

@@ -10,6 +10,11 @@ describe("lexicon", () => {
     expect(isValidWord("es", "NIÑO") || isValidWord("es", "NINO")).toBe(true);
   });
 
+  test("Spanish accepts HORNO but not ONROH", () => {
+    expect(isValidWord("es", "HORNO")).toBe(true);
+    expect(isValidWord("es", "ONROH")).toBe(false);
+  });
+
   test("lexicons are full-size open lists", () => {
     expect(getDictionarySize("es")).toBeGreaterThan(20_000);
     expect(getDictionarySize("en")).toBeGreaterThan(50_000);

@@ -6,8 +6,10 @@ PROJECT_SLUG := scrabble
 build:
 	@echo ":: build: ."
 	docker compose build
-	@echo "Images built. Run 'make up' to start."
-
+	docker compose up -d --force-recreate
+	@echo "Backend:  http://localhost:8000/"
+	@echo "Frontend: http://localhost:3000/scrabble/"
+	
 build-backend:
 	$(MAKE) -C backend build
 
