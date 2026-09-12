@@ -207,9 +207,6 @@ export function previewPlay(
   if (room.status !== "playing") {
     return { error: "Game not in progress" };
   }
-  if (!isPlayerTurn(room, playerId)) {
-    return { error: "Not your turn" };
-  }
 
   const player = room.players.find((p) => p.id === playerId);
   if (!player) return { error: "Player not found" };
