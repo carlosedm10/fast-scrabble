@@ -8,9 +8,61 @@ import { Tile } from "@/components/Tile";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { insertDraggedId, orderTiles, sameIds } from "@/lib/rackOrder";
 import { getSocket } from "@/lib/socket";
 import { getToken, clearSession } from "@/lib/storage";
 import type { PendingPlacement, PlayerView, RoomView, TileData } from "@/types/game";
+
+/** How far above the finger the drop cursor sits on touch, in CSS pixels. */
+const TOUCH_DROP_AIM_Y = 72;
+
+function pointerIsCoarse(): boolean {
+  return window.matchMedia("(pointer: coarse), (max-width: 639px)").matches;
+}
+
+function dropAim(clientX: number, clientY: number): { x: number; y: number } {
+  if (!pointerIsCoarse()) return { x: clientX, y: clientY };
+  return { x: clientX, y: clientY - TOUCH_DROP_AIM_Y };
+}
+
+function elementAt(x: number, y: number): Element | null {
+  return document.elementFromPoint(x, y);
+}
+
+function pointerOverRack(clientX: number, clientY: number): boolean {
+  const rack = document.querySelector("[data-rack]");
+  if (!(rack instanceof HTMLElement)) return false;
+  const rect = rack.getBoundingClientRect();
+  return (
+    clientX >= rect.left - 24 &&
+    clientX <= rect.right + 24 &&
+    clientY >= rect.top - 32 &&
+    clientY <= rect.bottom + 32
+  );
+}
+
+function rackInsertIndex(dragId: string, clientX: number, clientY: number, ids: string[]): number {
+  const others = ids.filter((id) => id !== dragId);
+  if (others.length === 0) return 0;
+
+  let nearestI = 0;
+  let nearestDist = Number.POSITIVE_INFINITY;
+  others.forEach((id, index) => {
+    const el = document.querySelector(`[data-rack-tile="${id}"]`);
+    if (!(el instanceof HTMLElement)) return;
+    const rect = el.getBoundingClientRect();
+    const dist = Math.hypot(clientX - (rect.left + rect.width / 2), clientY - (rect.top + rect.height / 2));
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearestI = index;
+    }
+  });
+
+  const nearest = document.querySelector(`[data-rack-tile="${others[nearestI]}"]`);
+  if (!(nearest instanceof HTMLElement)) return others.length;
+  const rect = nearest.getBoundingClientRect();
+  return clientX < rect.left + rect.width / 2 ? nearestI : nearestI + 1;
+}
 
 const SPANISH_LETTERS = "ABCDEFGHIJLMNOPQRSTUVXYZÑ".split("");
 const ENGLISH_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
@@ -45,6 +97,7 @@ export function GamePage() {
   const [preview, setPreview] = useState<{ score: number; error: string | null } | null>(null);
   const [draggingTileId, setDraggingTileId] = useState<string | null>(null);
   const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
+  const [rackOrder, setRackOrder] = useState<string[]>([]);
   const dragRef = useRef<{
     tileId: string;
     originX: number;
@@ -52,11 +105,23 @@ export function GamePage() {
     x: number;
     y: number;
     moved: boolean;
+    canPlace: boolean;
   } | null>(null);
   const hoverRef = useRef<{ row: number; col: number } | null>(null);
+  const serverRackRef = useRef<TileData[]>([]);
 
   const token = getToken();
-  const rack: TileData[] = room?.yourRack ?? [];
+  const rack = useMemo(
+    () => orderTiles(room?.yourRack ?? [], rackOrder),
+    [room?.yourRack, rackOrder],
+  );
+  serverRackRef.current = room?.yourRack ?? [];
+
+  useEffect(() => {
+    setRackOrder([]);
+    setPendingPlacements([]);
+    setSelectedTileId(null);
+  }, [code]);
 
   const applyRoom = useCallback(
     (updated: RoomView) => {
@@ -164,8 +229,10 @@ export function GamePage() {
     placeTileAt(row, col, selectedTileId);
   };
 
-  const beginDrag = (tileId: string, event: ReactPointerEvent) => {
-    if (!isMyTurn || room?.status !== "playing") return;
+  const beginDrag = (tileId: string, event: ReactPointerEvent, source: "rack" | "board" = "rack") => {
+    if (room?.status === "finished") return;
+    const canPlace = Boolean(isMyTurn && room?.status === "playing");
+    if (source === "board" && !canPlace) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = {
       tileId,
@@ -174,23 +241,37 @@ export function GamePage() {
       x: event.clientX,
       y: event.clientY,
       moved: false,
+      canPlace,
     };
     setDraggingTileId(tileId);
     document.body.style.userSelect = "none";
     document.body.style.touchAction = "none";
   };
 
+  const reorderRackAt = useCallback((dragId: string, clientX: number, clientY: number) => {
+    if (!pointerOverRack(clientX, clientY)) return false;
+    setRackOrder((prev) => {
+      const ids = orderTiles(serverRackRef.current, prev).map((tile) => tile.id);
+      if (!ids.includes(dragId)) return prev;
+      const next = insertDraggedId(ids, dragId, rackInsertIndex(dragId, clientX, clientY, ids));
+      if (sameIds(next, prev) || sameIds(next, ids)) return prev;
+      return next;
+    });
+    return true;
+  }, []);
+
   useEffect(() => {
-    const updateHover = (clientX: number, clientY: number) => {
-      const el = document.elementFromPoint(clientX, clientY);
-      const cell = el?.closest("[data-board-cell]") as HTMLElement | null;
-      const next = cell
-        ? { row: Number(cell.dataset.row), col: Number(cell.dataset.col) }
-        : null;
+    const setHover = (next: { row: number; col: number } | null) => {
       const prev = hoverRef.current;
       if (prev?.row === next?.row && prev?.col === next?.col) return;
       hoverRef.current = next;
       setHoverCell(next);
+    };
+
+    const cellAt = (x: number, y: number) => {
+      const el = elementAt(x, y);
+      const cell = el?.closest("[data-board-cell]") as HTMLElement | null;
+      return cell ? { row: Number(cell.dataset.row), col: Number(cell.dataset.col) } : null;
     };
 
     const onMove = (event: globalThis.PointerEvent) => {
@@ -201,7 +282,20 @@ export function GamePage() {
       if (!drag.moved && Math.hypot(event.clientX - drag.originX, event.clientY - drag.originY) > 6) {
         drag.moved = true;
       }
-      updateHover(event.clientX, event.clientY);
+
+      if (pointerOverRack(event.clientX, event.clientY)) {
+        setHover(null);
+        if (drag.moved) reorderRackAt(drag.tileId, event.clientX, event.clientY);
+        return;
+      }
+
+      if (!drag.canPlace) {
+        setHover(null);
+        return;
+      }
+
+      const aim = dropAim(event.clientX, event.clientY);
+      setHover(cellAt(aim.x, aim.y));
     };
     const onUp = (event: globalThis.PointerEvent) => {
       const drag = dragRef.current;
@@ -213,19 +307,21 @@ export function GamePage() {
       document.body.style.touchAction = "";
       if (!drag) return;
 
-      const el = document.elementFromPoint(event.clientX, event.clientY);
-      const cell = el?.closest("[data-board-cell]") as HTMLElement | null;
-      const onRack = Boolean(el?.closest("[data-rack]"));
-
       if (drag.moved) {
-        if (cell) {
-          placeTileAt(Number(cell.dataset.row), Number(cell.dataset.col), drag.tileId);
-        } else if (onRack) {
+        if (pointerOverRack(event.clientX, event.clientY)) {
+          reorderRackAt(drag.tileId, event.clientX, event.clientY);
           setPendingPlacements((prev) => prev.filter((p) => p.tileId !== drag.tileId));
+          return;
+        }
+        if (drag.canPlace) {
+          const aim = dropAim(event.clientX, event.clientY);
+          const cell = cellAt(aim.x, aim.y);
+          if (cell) placeTileAt(cell.row, cell.col, drag.tileId);
         }
         return;
       }
 
+      if (!drag.canPlace) return;
       if (pendingPlacements.some((p) => p.tileId === drag.tileId)) return;
       setSelectedTileId((current) => (current === drag.tileId ? null : drag.tileId));
     };
@@ -237,7 +333,7 @@ export function GamePage() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [placeTileAt, pendingPlacements]);
+  }, [placeTileAt, pendingPlacements, reorderRackAt]);
 
   useEffect(() => {
     if (!code || !token || pendingPlacements.length === 0) {
@@ -499,7 +595,7 @@ export function GamePage() {
                 pendingPlacements={pendingPlacements}
                 rack={rack}
                 onCellTap={handleCellTap}
-                onPendingPointerDown={beginDrag}
+                onPendingPointerDown={(tileId, event) => beginDrag(tileId, event, "board")}
                 draggingTileId={draggingTileId}
                 hoverCell={hoverCell}
               />
@@ -513,14 +609,15 @@ export function GamePage() {
                 <div className="tile-rack">
                   <div className="tile-rack-tiles flex flex-wrap justify-center gap-1.5 sm:gap-2">
                     {rackTiles.map((tile) => (
-                      <Tile
-                        key={tile.id}
-                        tile={tile}
-                        selected={selectedTileId === tile.id}
-                        dragging={draggingTileId === tile.id}
-                        onPointerDown={(event) => beginDrag(tile.id, event)}
-                        size="rack"
-                      />
+                      <div key={tile.id} data-rack-tile={tile.id}>
+                        <Tile
+                          tile={tile}
+                          selected={selectedTileId === tile.id}
+                          dragging={draggingTileId === tile.id}
+                          onPointerDown={(event) => beginDrag(tile.id, event, "rack")}
+                          size="rack"
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
