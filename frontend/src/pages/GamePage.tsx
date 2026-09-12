@@ -422,7 +422,7 @@ export function GamePage() {
       <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[1fr_260px] lg:gap-6 lg:px-4">
         <div className="flex-1 min-h-0 flex flex-col">
           {room.status !== "finished" && (
-            <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1 lg:hidden">
+            <div className="shrink-0 flex gap-1.5 overflow-x-auto px-2 pb-1 pt-0.5 lg:hidden">
               {room.players.map((p) => (
                 <div
                   key={p.id}
@@ -441,8 +441,8 @@ export function GamePage() {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 flex flex-col justify-end lg:justify-center">
-            <div className="shrink-0 px-2 py-1.5 sm:px-0">
+          <div className="flex flex-col lg:flex-1 lg:justify-center lg:min-h-0">
+            <div className="shrink-0 px-2 py-1 sm:px-0 sm:py-1.5">
               {room.status === "playing" && isMyTurn && (
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   {preview && !preview.error && pendingPlacements.length > 0 && (
