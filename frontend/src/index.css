@@ -148,6 +148,7 @@ body::before {
   min-width: min(21rem, calc(100vw - 1.5rem));
   margin-inline: auto;
   padding: 0.45rem 0.75rem 0.8rem;
+  pointer-events: auto;
 }
 
 .tile-rack::before {
@@ -186,6 +187,10 @@ body::before {
   position: relative;
   z-index: 1;
   min-height: 2.75rem;
+}
+
+.rack-zone {
+  pointer-events: none;
 }
 
 @media (max-width: 639px) {
