@@ -29,16 +29,15 @@ function elementAt(x: number, y: number): Element | null {
   return document.elementFromPoint(x, y);
 }
 
-function pointerOverRack(clientX: number, clientY: number): boolean {
-  const rack = document.querySelector("[data-rack]");
-  if (!(rack instanceof HTMLElement)) return false;
-  const rect = rack.getBoundingClientRect();
-  return (
-    clientX >= rect.left - 24 &&
-    clientX <= rect.right + 24 &&
-    clientY >= rect.top - 32 &&
-    clientY <= rect.bottom + 32
-  );
+function zoneAt(clientX: number, clientY: number): "rack" | "board" | "other" {
+  const el = elementAt(clientX, clientY);
+  if (el?.closest("[data-rack]")) return "rack";
+  if (el?.closest("[data-board-cell]")) return "board";
+  return "other";
+}
+
+function isTurnError(error: string | undefined): boolean {
+  return error === "Not your turn";
 }
 
 function rackInsertIndex(dragId: string, clientX: number, clientY: number, ids: string[]): number {
@@ -76,6 +75,7 @@ function statusLabel(status: RoomView["status"], t: (key: string) => string): st
 function mapServerError(error: string | undefined, t: (key: string, opts?: Record<string, unknown>) => string, fallback: string): string {
   if (error === "expired") return t("expired");
   if (error === "Room not found") return t("roomNotFound");
+  if (error === "Not your turn") return t("notYourTurn");
   if (error?.startsWith("Invalid word:")) {
     return t("invalidWord", { word: error.slice("Invalid word:".length).trim() });
   }
@@ -253,7 +253,7 @@ export function GamePage() {
   };
 
   const reorderRackAt = useCallback((dragId: string, clientX: number, clientY: number) => {
-    if (!pointerOverRack(clientX, clientY)) return false;
+    if (zoneAt(clientX, clientY) !== "rack") return false;
     setRackOrder((prev) => {
       const ids = orderTiles(serverRackRef.current, prev).map((tile) => tile.id);
       if (!ids.includes(dragId)) return prev;
@@ -287,7 +287,8 @@ export function GamePage() {
         drag.moved = true;
       }
 
-      if (pointerOverRack(event.clientX, event.clientY)) {
+      const zone = zoneAt(event.clientX, event.clientY);
+      if (zone === "rack") {
         setHover(null);
         if (drag.moved) reorderRackAt(drag.tileId, event.clientX, event.clientY);
         return;
@@ -312,7 +313,7 @@ export function GamePage() {
       if (!drag) return;
 
       if (drag.moved) {
-        if (pointerOverRack(event.clientX, event.clientY)) {
+        if (zoneAt(event.clientX, event.clientY) === "rack") {
           reorderRackAt(drag.tileId, event.clientX, event.clientY);
           setPendingPlacements((prev) => prev.filter((p) => p.tileId !== drag.tileId));
           return;
@@ -351,6 +352,8 @@ export function GamePage() {
       (res: { ok: boolean; score?: number; error?: string }) => {
         if (res.ok) {
           setPreview({ score: res.score ?? 0, error: null });
+        } else if (isTurnError(res.error)) {
+          setPreview(null);
         } else {
           setPreview({
             score: 0,
@@ -555,6 +558,9 @@ export function GamePage() {
                   {t("previewScore", { score: preview.score })}
                 </span>
               )}
+              {preview?.error && pendingPlacements.length > 0 && (
+                <span className="text-sm font-semibold text-red-400">{preview.error}</span>
+              )}
               <Button size="sm" onClick={handlePlay} disabled={pendingPlacements.length === 0}>
                 {t("playWord")}
               </Button>
@@ -580,6 +586,9 @@ export function GamePage() {
                     <span className="font-semibold text-brand-cyan-light text-lg sm:text-2xl tabular-nums">
                       {t("previewScore", { score: preview.score })}
                     </span>
+                  )}
+                  {preview?.error && (
+                    <span className="text-sm font-semibold text-red-400">{preview.error}</span>
                   )}
                   <Button variant="outline" size="sm" onClick={handleUndoPending} aria-label={t("undo")}>
                     <Undo2 className="h-4 w-4" />
@@ -622,10 +631,9 @@ export function GamePage() {
 
             {rack.length > 0 && room.status !== "finished" && (
               <div
-                data-rack
                 className="rack-zone shrink-0 sticky bottom-0 z-20 -mx-4 bg-[#05070de8] px-4 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:mx-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none sm:static sm:pt-3"
               >
-                <div className="tile-rack">
+                <div data-rack className="tile-rack">
                   <div className="tile-rack-tiles flex flex-wrap justify-center gap-1.5 sm:gap-2">
                     {rackTiles.map((tile) => (
                       <div key={tile.id} data-rack-tile={tile.id}>

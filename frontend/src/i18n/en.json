@@ -36,6 +36,7 @@
   "yourTurn": "Your turn",
   "waitingTurn": "{{name}}'s turn",
   "trialHint": "you can try tiles on the board",
+  "notYourTurn": "It's not your turn to confirm the play",
   "players": "Players",
   "points": "pts",
   "you": "(you)",

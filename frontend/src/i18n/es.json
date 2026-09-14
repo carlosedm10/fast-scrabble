@@ -36,6 +36,7 @@
   "yourTurn": "Tu turno",
   "waitingTurn": "Turno de {{name}}",
   "trialHint": "puedes probar en el tablero",
+  "notYourTurn": "Aún no es tu turno para confirmar la jugada",
   "players": "Jugadores",
   "points": "pts",
   "you": "(tú)",
