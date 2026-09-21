@@ -2,12 +2,9 @@ import type { PointerEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Tile, type TileData } from "./Tile";
 
-const MULTIPLIERS: Record<string, string> = {
-  tw: "TW",
-  dw: "DW",
-  tl: "TL",
-  dl: "DL",
-  star: "★",
+const MULTIPLIERS: Record<"es" | "en", Record<string, string>> = {
+  es: { tw: "TP", dw: "DP", tl: "TL", dl: "DL", star: "★" },
+  en: { tw: "TW", dw: "DW", tl: "TL", dl: "DL", star: "★" },
 };
 
 const LAYOUT = [
@@ -43,6 +40,7 @@ interface PendingPlacement {
 }
 
 interface BoardProps {
+  language?: "es" | "en";
   board: (PlacedCell | null)[][] | null;
   pendingPlacements: PendingPlacement[];
   rack: { id: string; letter: string; points: number; kind: string }[];
@@ -53,6 +51,7 @@ interface BoardProps {
 }
 
 export function Board({
+  language = "es",
   board,
   pendingPlacements,
   rack,
@@ -73,7 +72,7 @@ export function Board({
           row.map((cell, c) => {
             const placed = board?.[r]?.[c];
             const pending = getPending(r, c);
-            const mult = cell === "n" ? null : MULTIPLIERS[cell];
+            const mult = cell === "n" ? null : MULTIPLIERS[language][cell];
             const hovered = hoverCell?.row === r && hoverCell?.col === c;
 
             if (placed) {

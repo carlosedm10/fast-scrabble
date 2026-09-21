@@ -25,15 +25,29 @@ export function generateRoomCode(): string {
   return code;
 }
 
+function assertNickname(nickname: string): string | { error: string } {
+  const trimmed = nickname?.trim?.() ?? "";
+  if (!trimmed || trimmed.length > 20) return { error: "Invalid nickname" };
+  return trimmed;
+}
+
 export function createRoom(
   language: Language,
   hostNickname: string,
   maxPlayers: unknown = 2,
 ): GameRoom {
+  if (language !== "es" && language !== "en") {
+    throw new Error("Invalid language");
+  }
+  const nickname = assertNickname(hostNickname);
+  if (typeof nickname !== "string") {
+    throw new Error(nickname.error);
+  }
+
   const hostToken = nanoid(16);
   const host: Player = {
     id: nanoid(8),
-    nickname: hostNickname,
+    nickname,
     token: hostToken,
     rack: [],
     score: 0,
@@ -55,10 +69,15 @@ export function createRoom(
     maxPlayers: clampMaxPlayers(maxPlayers),
     createdAt,
     lastMoveAt: createdAt,
+    scorelessStreak: 0,
   };
 }
 
 export function joinRoom(room: GameRoom, nickname: string): { room: GameRoom; player: Player } | { error: string } {
+  const name = assertNickname(nickname);
+  if (typeof name !== "string") return name;
+  nickname = name;
+
   if (room.status !== "waiting") {
     return { error: "Game already started" };
   }
@@ -101,19 +120,22 @@ export function startGame(room: GameRoom, playerId: string): GameRoom | { error:
     return { error: "Game already started" };
   }
 
+  let bag = room.bag;
   const players = room.players.map((p) => {
     const needed = rackSizeForPlayerCount(room.players.length) - p.rack.length;
     if (needed <= 0) return p;
-    const { drawn, remaining } = drawTiles(room.bag, needed);
-    room.bag = remaining;
-    return { ...p, rack: [...p.rack, ...drawn] };
+    const drawnTiles = drawTiles(bag, needed);
+    bag = drawnTiles.remaining;
+    return { ...p, rack: [...p.rack, ...drawnTiles.drawn] };
   });
 
   return touchActivity({
     ...room,
     status: "playing",
     players,
+    bag,
     currentPlayerIndex: 0,
+    scorelessStreak: 0,
   });
 }
 
@@ -123,6 +145,51 @@ export function getPlayerByToken(room: GameRoom, token: string): Player | undefi
 
 export function isPlayerTurn(room: GameRoom, playerId: string): boolean {
   return room.players[room.currentPlayerIndex]?.id === playerId;
+}
+
+function rackValue(player: Player): number {
+  return player.rack.reduce((sum, tile) => sum + (tile.kind === "blank" ? 0 : tile.points), 0);
+}
+
+function finishOutOfTiles(room: GameRoom, finisherId: string): GameRoom {
+  let bonus = 0;
+  const players = room.players.map((player) => {
+    if (player.id === finisherId) return player;
+    const value = rackValue(player);
+    bonus += value;
+    return { ...player, score: player.score - value };
+  });
+  return {
+    ...room,
+    status: "finished",
+    scorelessStreak: 0,
+    players: players.map((player) =>
+      player.id === finisherId ? { ...player, score: player.score + bonus } : player,
+    ),
+  };
+}
+
+function finishByScorelessTurns(room: GameRoom): GameRoom {
+  return {
+    ...room,
+    status: "finished",
+    scorelessStreak: 0,
+    players: room.players.map((player) => ({
+      ...player,
+      score: player.score - rackValue(player),
+    })),
+  };
+}
+
+function advanceScoreless(room: GameRoom): GameRoom {
+  const streak = (room.scorelessStreak ?? 0) + 1;
+  const next = touchActivity({
+    ...room,
+    scorelessStreak: streak,
+    currentPlayerIndex: (room.currentPlayerIndex + 1) % room.players.length,
+  });
+  if (streak >= 6) return finishByScorelessTurns(next);
+  return next;
 }
 
 function refillRack(room: GameRoom, player: Player): void {
@@ -171,7 +238,12 @@ export function playTiles(
     newBoard[placed.row][placed.col] = placed;
   }
 
-  const moveScore = scoreMove(newBoard, result.placements, moves);
+  const scoringMoves = result.placements.map((placed) => ({
+    row: placed.row,
+    col: placed.col,
+    tileId: placed.tile.id,
+  }));
+  const moveScore = scoreMove(newBoard, result.placements, scoringMoves);
   const usedTileIds = new Set(moves.map((m) => m.tileId));
   const newRack = player.rack.filter((t) => !usedTileIds.has(t.id));
 
@@ -184,6 +256,7 @@ export function playTiles(
     ...room,
     board: newBoard,
     players: updatedPlayers,
+    scorelessStreak: 0,
   });
 
   const currentPlayer = updatedPlayers.find((p) => p.id === playerId)!;
@@ -193,7 +266,7 @@ export function playTiles(
     (room.currentPlayerIndex + 1) % room.players.length;
 
   if (updatedRoom.bag.length === 0 && currentPlayer.rack.length === 0) {
-    updatedRoom.status = "finished";
+    return { room: finishOutOfTiles(updatedRoom, playerId), score: moveScore };
   }
 
   return { room: updatedRoom, score: moveScore };
@@ -232,7 +305,15 @@ export function previewPlay(
   }
 
   return {
-    score: scoreMove(newBoard, result.placements, moves),
+    score: scoreMove(
+      newBoard,
+      result.placements,
+      result.placements.map((placed) => ({
+        row: placed.row,
+        col: placed.col,
+        tileId: placed.tile.id,
+      })),
+    ),
     words: result.formedWords,
   };
 }
@@ -241,10 +322,7 @@ export function passTurn(room: GameRoom, playerId: string): GameRoom | { error: 
   if (room.status !== "playing") return { error: "Game not in progress" };
   if (!isPlayerTurn(room, playerId)) return { error: "Not your turn" };
 
-  return touchActivity({
-    ...room,
-    currentPlayerIndex: (room.currentPlayerIndex + 1) % room.players.length,
-  });
+  return advanceScoreless(room);
 }
 
 export function exchangeTiles(
@@ -254,7 +332,8 @@ export function exchangeTiles(
 ): GameRoom | { error: string } {
   if (room.status !== "playing") return { error: "Game not in progress" };
   if (!isPlayerTurn(room, playerId)) return { error: "Not your turn" };
-  if (room.bag.length < tileIds.length) return { error: "Not enough tiles in bag" };
+  if (tileIds.length === 0) return { error: "Select tiles to exchange" };
+  if (room.bag.length < 7) return { error: "Not enough tiles in bag" };
 
   const player = room.players.find((p) => p.id === playerId);
   if (!player) return { error: "Player not found" };
@@ -273,11 +352,10 @@ export function exchangeTiles(
     p.id === playerId ? { ...p, rack: newRack } : p,
   );
 
-  return touchActivity({
+  return advanceScoreless({
     ...room,
     bag: newBag,
     players: updatedPlayers,
-    currentPlayerIndex: (room.currentPlayerIndex + 1) % room.players.length,
   });
 }
 

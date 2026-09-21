@@ -13,6 +13,11 @@
   box-sizing: border-box;
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
 html {
   background: #05070d;
 }
@@ -59,6 +64,15 @@ body::before {
   justify-content: center;
 }
 
+.board-stage {
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
 .scrabble-board {
   container-type: inline-size;
   container-name: board;
@@ -66,8 +80,7 @@ body::before {
   grid-template-columns: repeat(15, minmax(0, 1fr));
   grid-template-rows: repeat(15, minmax(0, 1fr));
   aspect-ratio: 1 / 1;
-  /* Size against the padded column, not 100vw, so leftover space stays equal. */
-  width: min(100%, calc(100dvh - 14.5rem), 600px);
+  width: min(100cqi, 100cqb, 720px);
   max-width: 100%;
   margin-inline: auto;
   gap: clamp(1px, 0.35cqi, 3px);
@@ -118,26 +131,73 @@ body::before {
   opacity: 0.72;
 }
 
-@container board (max-width: 330px) {
-  .tile-fill-points {
-    display: none;
-  }
-}
-
 @media (min-width: 640px) {
-  .scrabble-board {
-    width: min(100%, 600px, calc(100dvh - 10rem));
-  }
-
   .scrabble-cell {
     border-radius: clamp(2px, 0.3cqi, 4px);
   }
 }
 
-@media (min-width: 1024px) {
-  .scrabble-board {
-    width: min(100%, calc(100dvh - 14rem), 720px);
-    max-width: 720px;
+.landscape-scores {
+  display: none;
+}
+
+@media (max-width: 380px) {
+  .action-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .action-grid button {
+    height: 2.6rem;
+    padding-inline: 0.15rem;
+    font-size: 0.65rem;
+    gap: 0.15rem;
+  }
+
+  .place-hint {
+    display: none;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) and (max-width: 900px) {
+  .play-column {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(11.5rem, 16rem);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.5rem;
+    min-height: 0;
+    height: 100%;
+  }
+
+  .mobile-scores,
+  .place-hint {
+    display: none;
+  }
+
+  .landscape-scores {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .action-grid button {
+    height: 2.15rem;
+    font-size: 0.7rem;
+  }
+
+  .board-stage {
+    height: 100%;
+  }
+
+  .game-dock {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .game-header {
+    margin-top: 0.15rem;
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
   }
 }
 
@@ -145,7 +205,8 @@ body::before {
   position: relative;
   isolation: isolate;
   width: fit-content;
-  min-width: min(21rem, calc(100vw - 1.5rem));
+  max-width: 100%;
+  min-width: min(100%, 16rem);
   margin-inline: auto;
   padding: 0.45rem 0.75rem 0.8rem;
   pointer-events: auto;
@@ -187,16 +248,45 @@ body::before {
   position: relative;
   z-index: 1;
   min-height: 2.75rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.rack-tile button {
+  height: 2.75rem;
+  width: 2.75rem;
+}
+
+@media (max-width: 380px) {
+  .rack-tile button {
+    height: 2.35rem;
+    width: 2.35rem;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) and (max-width: 900px) {
+  .tile-rack {
+    min-width: 0;
+    width: 100%;
+    padding: 0.15rem 0.2rem 0.35rem;
+  }
+
+  .tile-rack-tiles {
+    gap: 2px;
+    min-height: 0;
+  }
+
+  .rack-tile button {
+    height: 1.85rem;
+    width: 1.85rem;
+    font-size: 0.7rem;
+  }
 }
 
 .rack-zone {
   pointer-events: none;
-}
-
-@media (max-width: 639px) {
-  .rack-zone {
-    margin-top: 1.25rem;
-  }
 }
 
 @keyframes tile-jiggle {
