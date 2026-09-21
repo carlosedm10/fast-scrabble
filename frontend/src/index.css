@@ -408,8 +408,8 @@ body::before {
 }
 
 .game-shell[data-layout="compact-landscape"] .board-stage {
-  align-self: stretch;
-  height: auto;
+  align-self: center;
+  height: min(calc(100dvh - 5.25rem), calc(100vw - 19rem), 720px);
 }
 
 .game-shell[data-layout="compact-landscape"] .scrabble-board {
