@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Copy, Link2, LogOut, Play, RefreshCw, Repeat, SkipForward, Undo2 } from "lucide-react";
+import {
+  Copy,
+  Ellipsis,
+  Link2,
+  LogOut,
+  Play,
+  RefreshCw,
+  Repeat,
+  Shuffle,
+  SkipForward,
+  Undo2,
+} from "lucide-react";
 import { Board } from "@/components/Board";
 import { DragTileGhost } from "@/components/DragTileGhost";
 import { Tile } from "@/components/Tile";
@@ -112,6 +123,7 @@ export function GamePage() {
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [exchangeIds, setExchangeIds] = useState<string[]>([]);
   const [passOpen, setPassOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [device, setDevice] = useState(getDeviceProfile);
   const roomRef = useRef<RoomView | null>(null);
   const dragRef = useRef<{
@@ -475,6 +487,17 @@ export function GamePage() {
     setSelectedTileId(null);
   };
 
+  const handleShuffleRack = () => {
+    setRackOrder((current) => {
+      const next = orderTiles(serverRackRef.current, current).map((tile) => tile.id);
+      for (let index = next.length - 1; index > 0; index--) {
+        const swapWith = Math.floor(Math.random() * (index + 1));
+        [next[index], next[swapWith]] = [next[swapWith], next[index]];
+      }
+      return next;
+    });
+  };
+
   const flash = (text: string) => {
     setMessage(text);
     window.setTimeout(() => setMessage(""), 2000);
@@ -691,84 +714,21 @@ export function GamePage() {
               </div>
             )}
 
-            {room.status === "playing" && isMyTurn && (
-              <div className="action-grid grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-center">
-                {preview && !preview.error && pendingPlacements.length > 0 && (
-                  <span className="col-span-2 text-center text-lg font-semibold tabular-nums text-brand-cyan-light sm:text-2xl">
+            {room.status === "playing" && pendingPlacements.length > 0 && (
+              <div className="turn-feedback text-center">
+                {preview && !preview.error && (
+                  <span className="font-semibold tabular-nums text-brand-cyan-light">
                     {t("previewScore", { score: preview.score })}
                   </span>
                 )}
-                {preview?.error && pendingPlacements.length > 0 && (
-                  <span className="col-span-2 text-center text-sm font-semibold text-red-400">{preview.error}</span>
-                )}
-                <Button className="play-action h-11 sm:h-10" onClick={handlePlay} disabled={pendingPlacements.length === 0 || !!preview?.error}>
-                  <Play className="h-4 w-4" />
-                  <span className="action-label-full">{t("playWord")}</span>
-                  <span className="action-label-short">{t("playShort")}</span>
-                </Button>
-                <Button variant="outline" className="undo-action h-11 sm:h-10" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
-                  <Undo2 className="h-4 w-4" />
-                  <span className="action-label">{t("undo")}</span>
-                </Button>
-                <Button variant="outline" className="pass-action h-11 sm:h-10" onClick={() => setPassOpen(true)} aria-label={t("pass")}>
-                  <SkipForward className="h-4 w-4" />
-                  <span className="action-label">{t("pass")}</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="exchange-action h-11 sm:h-10"
-                  onClick={() => {
-                    setExchangeIds([]);
-                    setExchangeOpen(true);
-                  }}
-                  disabled={pendingPlacements.length > 0}
-                  aria-label={t("exchange")}
-                >
-                  <Repeat className="h-4 w-4" />
-                  <span className="action-label">{t("exchange")}</span>
-                </Button>
+                {preview?.error && <span className="font-semibold text-red-400">{preview.error}</span>}
               </div>
             )}
 
             {room.status === "playing" && !isMyTurn && (
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-center text-sm text-white/60">
-                  {t("waitingTurn", { name: currentTurnName ?? "…" })} · {t("trialHint")}
-                </p>
-                {pendingPlacements.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    {preview && !preview.error && (
-                      <span className="text-lg font-semibold tabular-nums text-brand-cyan-light sm:text-2xl">
-                        {t("previewScore", { score: preview.score })}
-                      </span>
-                    )}
-                    {preview?.error && <span className="text-sm font-semibold text-red-400">{preview.error}</span>}
-                    <Button variant="outline" className="h-11" onClick={handleUndoPending} aria-label={t("undo")}>
-                      <Undo2 className="h-4 w-4" />
-                      <span>{t("undo")}</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {room.status === "waiting" && isHost && (
-              <div className="text-center">
-                <Button onClick={() => setTtlDialog(true)} className="h-12 px-6" disabled={room.players.length < 2}>
-                  <Play className="h-4 w-4" />
-                  {t("startGame", { current: room.players.length, max: maxPlayers })}
-                </Button>
-              </div>
-            )}
-
-            {room.status === "waiting" && !isHost && (
-              <p className="text-center text-sm text-white/60">
-                {t("waitingHost")} ({room.players.length}/{maxPlayers})
+              <p className="turn-waiting text-center text-sm text-white/60">
+                {t("waitingTurn", { name: currentTurnName ?? "…" })} · {t("trialHint")}
               </p>
-            )}
-
-            {room.status === "playing" && (
-              <p className="place-hint mt-1 text-center text-[11px] text-white/40">{t("placeHint")}</p>
             )}
 
             {rack.length > 0 && room.status !== "finished" && (
@@ -789,6 +749,64 @@ export function GamePage() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {room.status === "playing" && (
+              <p className="place-hint text-center text-[11px] text-white/40">{t("placeHint")}</p>
+            )}
+
+            {room.status === "playing" && isMyTurn && (
+              <div className="turn-action-bar">
+                <Button
+                  className="play-action"
+                  onClick={handlePlay}
+                  disabled={pendingPlacements.length === 0 || !!preview?.error}
+                >
+                  <Play className="h-4 w-4" />
+                  <span>{t("playWord")}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="turn-icon-action"
+                  onClick={handleUndoPending}
+                  disabled={pendingPlacements.length === 0}
+                  aria-label={t("undo")}
+                  title={t("undo")}
+                >
+                  <Undo2 className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="outline"
+                  className="turn-icon-action"
+                  onClick={() => setMoreOpen(true)}
+                  aria-label={t("moreActions")}
+                  title={t("moreActions")}
+                >
+                  <Ellipsis className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+
+            {room.status === "playing" && !isMyTurn && pendingPlacements.length > 0 && (
+              <Button variant="outline" className="recall-trial" onClick={handleUndoPending}>
+                <Undo2 className="h-4 w-4" />
+                {t("undo")}
+              </Button>
+            )}
+
+            {room.status === "waiting" && isHost && (
+              <div className="lobby-action text-center">
+                <Button onClick={() => setTtlDialog(true)} className="h-12 px-6" disabled={room.players.length < 2}>
+                  <Play className="h-4 w-4" />
+                  {t("startGame", { current: room.players.length, max: maxPlayers })}
+                </Button>
+              </div>
+            )}
+
+            {room.status === "waiting" && !isHost && (
+              <p className="lobby-action text-center text-sm text-white/60">
+                {t("waitingHost")} ({room.players.length}/{maxPlayers})
+              </p>
             )}
           </div>
         </div>
@@ -823,6 +841,51 @@ export function GamePage() {
                 {letter}
               </Button>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("turnActions")}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2">
+            <Button
+              variant="outline"
+              className="h-12 justify-start"
+              onClick={() => {
+                handleShuffleRack();
+                setMoreOpen(false);
+              }}
+            >
+              <Shuffle className="h-5 w-5" />
+              {t("shuffle")}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 justify-start"
+              onClick={() => {
+                setMoreOpen(false);
+                setPassOpen(true);
+              }}
+            >
+              <SkipForward className="h-5 w-5" />
+              {t("pass")}
+            </Button>
+            <Button
+              variant="outline"
+              className="h-12 justify-start"
+              disabled={pendingPlacements.length > 0}
+              onClick={() => {
+                setMoreOpen(false);
+                setExchangeIds([]);
+                setExchangeOpen(true);
+              }}
+            >
+              <Repeat className="h-5 w-5" />
+              {t("exchange")}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
