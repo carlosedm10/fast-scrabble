@@ -220,7 +220,7 @@ body::before {
 }
 
 .game-shell[data-layout="phone-portrait"] .play-column {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .game-shell[data-layout="phone-portrait"] .board-stage {
@@ -236,7 +236,7 @@ body::before {
   padding-block: 0.4rem;
 }
 
-.game-shell[data-device="phone"][data-compact="true"] .game-header button {
+.game-shell[data-device="phone"][data-compact="true"] .game-header > :last-child button {
   height: 2.25rem;
   width: 2.25rem;
 }
