@@ -175,6 +175,10 @@ body::before {
   height: 2.5rem;
 }
 
+.game-shell[data-device="phone"] .game-header > :last-child > button:first-child {
+  display: none;
+}
+
 .game-shell[data-device="phone"] .game-play {
   margin-top: 0.45rem;
 }
@@ -215,6 +219,15 @@ body::before {
   margin-top: 0.25rem;
 }
 
+.game-shell[data-layout="phone-portrait"] .play-column {
+  justify-content: center;
+}
+
+.game-shell[data-layout="phone-portrait"] .board-stage {
+  flex: 0 0 auto;
+  height: min(calc(100vw - 1rem), 640px);
+}
+
 .game-shell[data-device="phone"][data-compact="true"] .place-hint {
   display: none;
 }
@@ -241,7 +254,6 @@ body::before {
 
 .game-shell[data-layout="tablet-portrait"] .mobile-scores {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .game-shell[data-layout="tablet-portrait"] aside {
@@ -340,6 +352,14 @@ body::before {
 
 .game-shell[data-layout="compact-landscape"] .game-header button {
   height: 2.35rem;
+}
+
+.game-shell[data-layout="compact-landscape"] .game-header span {
+  display: none;
+}
+
+.game-shell[data-layout="compact-landscape"] .game-header > :last-child > button:first-child {
+  display: none;
 }
 
 .game-shell[data-layout="compact-landscape"] .play-column {
