@@ -411,6 +411,10 @@ body::before {
   height: 100%;
 }
 
+.game-shell[data-layout="compact-landscape"] .scrabble-board {
+  width: min(calc(100dvh - 5.25rem), calc(100vw - 19rem), 720px);
+}
+
 .game-shell[data-layout="compact-landscape"] .game-dock {
   min-height: 0;
   overflow: auto;
