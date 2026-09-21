@@ -651,7 +651,7 @@ export function GamePage() {
       {(message || (error && room.status !== "finished")) && (
         <p
           className={cn(
-            "shrink-0 text-center text-sm sm:text-lg font-semibold px-2 py-0.5",
+            "game-alert shrink-0 text-center text-sm sm:text-lg font-semibold px-2 py-0.5",
             message ? "text-brand-cyan-light" : "text-red-400",
           )}
         >
