@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { insertDraggedId, orderTiles, sameIds } from "@/lib/rackOrder";
 import { getSocket } from "@/lib/socket";
 import { clearSession, getNickname, getToken, saveSession } from "@/lib/storage";
+import { getDeviceProfile } from "@/lib/deviceProfile";
 import type { PendingPlacement, PlayerView, RoomView, TileData } from "@/types/game";
 
 /** How far above the finger the drop cursor sits on touch, in CSS pixels. */
@@ -111,6 +112,7 @@ export function GamePage() {
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [exchangeIds, setExchangeIds] = useState<string[]>([]);
   const [passOpen, setPassOpen] = useState(false);
+  const [device, setDevice] = useState(getDeviceProfile);
   const roomRef = useRef<RoomView | null>(null);
   const dragRef = useRef<{
     tileId: string;
@@ -125,12 +127,25 @@ export function GamePage() {
   const serverRackRef = useRef<TileData[]>([]);
 
   const token = sessionToken;
-  roomRef.current = room;
   const rack = useMemo(
     () => orderTiles(room?.yourRack ?? [], rackOrder),
     [room?.yourRack, rackOrder],
   );
-  serverRackRef.current = room?.yourRack ?? [];
+
+  useEffect(() => {
+    roomRef.current = room;
+    serverRackRef.current = room?.yourRack ?? [];
+  }, [room]);
+
+  useEffect(() => {
+    const updateDevice = () => setDevice(getDeviceProfile());
+    window.addEventListener("resize", updateDevice);
+    window.addEventListener("orientationchange", updateDevice);
+    return () => {
+      window.removeEventListener("resize", updateDevice);
+      window.removeEventListener("orientationchange", updateDevice);
+    };
+  }, []);
 
   useEffect(() => {
     setRackOrder([]);
@@ -572,7 +587,13 @@ export function GamePage() {
   const rackTiles = rack.filter((tile) => !pendingPlacements.some((p) => p.tileId === tile.id));
 
   return (
-    <div className="game-shell mx-auto flex h-dvh max-w-6xl flex-col overflow-hidden overscroll-none px-3 sm:px-6">
+    <div
+      className="game-shell mx-auto flex h-dvh max-w-6xl flex-col overflow-hidden overscroll-none px-3 sm:px-6"
+      data-device={device.kind}
+      data-orientation={device.orientation}
+      data-compact={device.compact ? "true" : "false"}
+      data-layout={device.layout}
+    >
       <header className="game-header mt-2 shrink-0 flex flex-col gap-2 rounded-xl border border-white/8 bg-brand-surface/65 px-3 py-2 shadow-lg shadow-black/15 backdrop-blur-xl sm:mt-3 sm:px-4 md:flex-row md:items-center md:gap-4">
         <div className="min-w-0 md:flex-1">
           <button
@@ -680,20 +701,22 @@ export function GamePage() {
                 {preview?.error && pendingPlacements.length > 0 && (
                   <span className="col-span-2 text-center text-sm font-semibold text-red-400">{preview.error}</span>
                 )}
-                <Button className="h-11 sm:h-10" onClick={handlePlay} disabled={pendingPlacements.length === 0 || !!preview?.error}>
-                  {t("playWord")}
+                <Button className="play-action h-11 sm:h-10" onClick={handlePlay} disabled={pendingPlacements.length === 0 || !!preview?.error}>
+                  <Play className="h-4 w-4" />
+                  <span className="action-label-full">{t("playWord")}</span>
+                  <span className="action-label-short">{t("playShort")}</span>
                 </Button>
-                <Button variant="outline" className="h-11 sm:h-10" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
+                <Button variant="outline" className="undo-action h-11 sm:h-10" onClick={handleUndoPending} disabled={pendingPlacements.length === 0} aria-label={t("undo")}>
                   <Undo2 className="h-4 w-4" />
-                  <span>{t("undo")}</span>
+                  <span className="action-label">{t("undo")}</span>
                 </Button>
-                <Button variant="outline" className="h-11 sm:h-10" onClick={() => setPassOpen(true)} aria-label={t("pass")}>
+                <Button variant="outline" className="pass-action h-11 sm:h-10" onClick={() => setPassOpen(true)} aria-label={t("pass")}>
                   <SkipForward className="h-4 w-4" />
-                  <span>{t("pass")}</span>
+                  <span className="action-label">{t("pass")}</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-11 sm:h-10"
+                  className="exchange-action h-11 sm:h-10"
                   onClick={() => {
                     setExchangeIds([]);
                     setExchangeOpen(true);
@@ -702,7 +725,7 @@ export function GamePage() {
                   aria-label={t("exchange")}
                 >
                   <Repeat className="h-4 w-4" />
-                  <span>{t("exchange")}</span>
+                  <span className="action-label">{t("exchange")}</span>
                 </Button>
               </div>
             )}
