@@ -21,7 +21,36 @@ import {
 import type { GameRoom, Language, MovePlacement } from "./game/types";
 
 const rooms = new Map<string, GameRoom>();
+const roomQueues = new Map<string, Promise<void>>();
 let ioRef: Server | null = null;
+
+function enqueue<T>(code: string, task: () => Promise<T>): Promise<T> {
+  const key = code.toUpperCase();
+  const previous = roomQueues.get(key) ?? Promise.resolve();
+  const run = previous.then(task, task);
+  roomQueues.set(
+    key,
+    run.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return run;
+}
+
+function listen<T>(
+  socket: Socket,
+  event: string,
+  handler: (data: T, cb: (result: unknown) => void) => Promise<void>,
+): void {
+  socket.on(event, (data: T, cb: (result: unknown) => void) => {
+    const code =
+      data && typeof data === "object" && "code" in data && typeof (data as { code?: unknown }).code === "string"
+        ? (data as { code: string }).code
+        : event;
+    void enqueue(code, () => handler(data, typeof cb === "function" ? cb : () => {}));
+  });
+}
 
 function remember(room: GameRoom): GameRoom {
   const hydrated = hydrateRoom(room);
@@ -83,6 +112,10 @@ function bindSocketToRoom(socket: Socket, roomCode: string, token?: string): voi
   if (token) socket.data.token = token;
 }
 
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 function missingError(result: Exclude<LoadResult, { status: "ok" }>): string {
   return result.status === "expired" ? "expired" : "Room not found";
 }
@@ -90,7 +123,7 @@ function missingError(result: Exclude<LoadResult, { status: "ok" }>): string {
 export function registerSocketHandlers(io: Server): void {
   ioRef = io;
   io.on("connection", (socket: Socket) => {
-    socket.on(
+    listen(socket, 
       "room:create",
       async (data: { nickname: string; language: Language; maxPlayers?: number }, cb) => {
         try {
@@ -101,12 +134,12 @@ export function registerSocketHandlers(io: Server): void {
           cb({ ok: true, room: sanitizeRoomForClient(room, player.token), token: player.token });
           await broadcastRoom(room);
         } catch (err) {
-          cb({ ok: false, error: String(err) });
+          cb({ ok: false, error: errorText(err) });
         }
       },
     );
 
-    socket.on("room:join", async (data: { code: string; nickname: string }, cb) => {
+    listen(socket, "room:join", async (data: { code: string; nickname: string }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
@@ -124,11 +157,11 @@ export function registerSocketHandlers(io: Server): void {
         });
         await broadcastRoom(result.room);
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
 
-    socket.on("room:start", async (data: { code: string; token: string }, cb) => {
+    listen(socket, "room:start", async (data: { code: string; token: string }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
@@ -145,11 +178,11 @@ export function registerSocketHandlers(io: Server): void {
         await broadcastRoom(result);
         cb({ ok: true, room: sanitizeRoomForClient(result, data.token) });
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
 
-    socket.on("game:play", async (data: { code: string; token: string; moves: MovePlacement[] }, cb) => {
+    listen(socket, "game:play", async (data: { code: string; token: string; moves: MovePlacement[] }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
@@ -167,11 +200,11 @@ export function registerSocketHandlers(io: Server): void {
         io.to(result.room.code).emit("game:scored", { playerId: player.id, score: result.score });
         cb({ ok: true, room: sanitizeRoomForClient(result.room, data.token), score: result.score });
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
 
-    socket.on("game:preview", async (data: { code: string; token: string; moves: MovePlacement[] }, cb) => {
+    listen(socket, "game:preview", async (data: { code: string; token: string; moves: MovePlacement[] }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
@@ -183,11 +216,11 @@ export function registerSocketHandlers(io: Server): void {
         if ("error" in result) return cb({ ok: false, error: result.error });
         cb({ ok: true, score: result.score, words: result.words });
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
 
-    socket.on("game:pass", async (data: { code: string; token: string }, cb) => {
+    listen(socket, "game:pass", async (data: { code: string; token: string }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
@@ -204,11 +237,11 @@ export function registerSocketHandlers(io: Server): void {
         await broadcastRoom(result);
         cb({ ok: true, room: sanitizeRoomForClient(result, data.token) });
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
 
-    socket.on("game:exchange", async (data: { code: string; token: string; tileIds: string[] }, cb) => {
+    listen(socket, "game:exchange", async (data: { code: string; token: string; tileIds: string[] }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
@@ -225,18 +258,18 @@ export function registerSocketHandlers(io: Server): void {
         await broadcastRoom(result);
         cb({ ok: true, room: sanitizeRoomForClient(result, data.token) });
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
 
-    socket.on("room:sync", async (data: { code: string; token?: string }, cb) => {
+    listen(socket, "room:sync", async (data: { code: string; token?: string }, cb) => {
       try {
         const loaded = await getOrLoadRoom(data.code);
         if (loaded.status !== "ok") return cb({ ok: false, error: missingError(loaded) });
         bindSocketToRoom(socket, loaded.room.code, data.token);
         cb({ ok: true, room: sanitizeRoomForClient(loaded.room, data.token) });
       } catch (err) {
-        cb({ ok: false, error: String(err) });
+        cb({ ok: false, error: errorText(err) });
       }
     });
   });

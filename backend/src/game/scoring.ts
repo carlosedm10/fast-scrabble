@@ -52,8 +52,10 @@ export function scoreMove(
   for (const move of moves) {
     for (const [dRow, dCol] of [[0, 1], [1, 0]] as const) {
       const { word, cells } = extractWordAt(board, move.row, move.col, dRow, dCol);
-      if (word.length < 2 || scoredWords.has(word)) continue;
-      scoredWords.add(word);
+      if (word.length < 2 || cells.length < 2) continue;
+      const wordKey = cells.map((cell) => `${cell.row},${cell.col}`).join("|");
+      if (scoredWords.has(wordKey)) continue;
+      scoredWords.add(wordKey);
 
       let wordScore = 0;
       let wordMultiplier = 1;

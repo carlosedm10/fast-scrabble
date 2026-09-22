@@ -57,5 +57,6 @@ export function hydrateRoom(room: GameRoom): GameRoom {
     ...room,
     maxPlayers: room.maxPlayers ?? 4,
     lastMoveAt: room.lastMoveAt ?? room.createdAt,
+    scorelessStreak: room.scorelessStreak ?? 0,
   };
 }

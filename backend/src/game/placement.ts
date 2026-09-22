@@ -1,5 +1,6 @@
 import { BOARD_SIZE } from "./board-layout";
 import { isValidWord } from "./dictionary";
+import { isWildcardForbidden } from "./tiles";
 import type { Language, MovePlacement, PlacedTile, Tile } from "./types";
 
 export interface PlacementResult {
@@ -22,6 +23,7 @@ function applyPlacements(
   board: (PlacedTile | null)[][],
   moves: MovePlacement[],
   rack: Tile[],
+  language: Language,
 ): { board: (PlacedTile | null)[][]; placements: PlacedTile[]; error?: string } {
   const next = cloneBoard(board);
   const placements: PlacedTile[] = [];
@@ -32,10 +34,13 @@ function applyPlacements(
 
     const letter =
       tile.kind === "blank"
-        ? (move.assignedLetter ?? "").toUpperCase()
+        ? (move.assignedLetter ?? "").trim().toUpperCase()
         : tile.letter;
 
     if (!letter) return { board, placements, error: "Blank tile needs assigned letter" };
+    if (tile.kind === "blank" && isWildcardForbidden(language, letter)) {
+      return { board, placements, error: `Wildcard cannot be ${letter} in ${language}` };
+    }
 
     if (getCell(next, move.row, move.col)) {
       return { board, placements, error: "Cell already occupied" };
@@ -131,38 +136,35 @@ function extractLetterUnitsAt(
   col: number,
   dRow: number,
   dCol: number,
-): string[] {
+): { units: string[]; key: string } {
   let r = row;
   let c = col;
   while (getCell(board, r - dRow, c - dCol)) {
     r -= dRow;
     c -= dCol;
   }
-  return readLetterUnits(board, r, c, dRow, dCol);
+  return {
+    units: readLetterUnits(board, r, c, dRow, dCol),
+    key: `${r},${c},${dRow},${dCol}`,
+  };
 }
 
 function collectFormedWords(
   board: (PlacedTile | null)[][],
   moves: MovePlacement[],
   language: Language,
-): { words: string[]; invalid?: string } {
+): { words: string[]; invalid?: string; tooShort?: boolean } {
   const seen = new Set<string>();
   const words: string[] = [];
 
   for (const move of moves) {
-    const hUnits = extractLetterUnitsAt(board, move.row, move.col, 0, 1);
-    const vUnits = extractLetterUnitsAt(board, move.row, move.col, 1, 0);
+    const horizontal = extractLetterUnitsAt(board, move.row, move.col, 0, 1);
+    const vertical = extractLetterUnitsAt(board, move.row, move.col, 1, 0);
 
-    const candidates: string[][] = [];
-    if (hUnits.length > 1) candidates.push(hUnits);
-    if (vUnits.length > 1) candidates.push(vUnits);
-    if (hUnits.length === 1 && vUnits.length === 1) candidates.push(hUnits);
-
-    for (const units of candidates) {
-      const word = units.join("");
-      if (seen.has(word)) continue;
-      seen.add(word);
-
+    for (const line of [horizontal, vertical]) {
+      if (line.units.length < 2 || seen.has(line.key)) continue;
+      seen.add(line.key);
+      const word = line.units.join("");
       if (!isValidWord(language, word)) {
         return { words: [...words, word], invalid: word };
       }
@@ -170,7 +172,42 @@ function collectFormedWords(
     }
   }
 
+  if (words.length === 0) return { words, tooShort: true };
   return { words };
+}
+
+function normalizeMoves(
+  moves: MovePlacement[],
+): { moves: MovePlacement[] } | { error: string } {
+  const seenTiles = new Set<string>();
+  const normalized: MovePlacement[] = [];
+
+  for (const move of moves) {
+    const row = Number(move?.row);
+    const col = Number(move?.col);
+    const tileId = typeof move?.tileId === "string" ? move.tileId : "";
+    if (
+      !tileId ||
+      !Number.isInteger(row) ||
+      !Number.isInteger(col) ||
+      row < 0 ||
+      col < 0 ||
+      row >= BOARD_SIZE ||
+      col >= BOARD_SIZE
+    ) {
+      return { error: "Cell is outside the board" };
+    }
+    if (seenTiles.has(tileId)) return { error: "Tile already used" };
+    seenTiles.add(tileId);
+    normalized.push({
+      row,
+      col,
+      tileId,
+      assignedLetter: move.assignedLetter,
+    });
+  }
+
+  return { moves: normalized };
 }
 
 export function validatePlacement(
@@ -184,7 +221,13 @@ export function validatePlacement(
     return { valid: false, error: "No tiles placed", formedWords: [], placements: [] };
   }
 
-  const { board: nextBoard, placements, error } = applyPlacements(board, moves, rack);
+  const normalized = normalizeMoves(moves);
+  if ("error" in normalized) {
+    return { valid: false, error: normalized.error, formedWords: [], placements: [] };
+  }
+  moves = normalized.moves;
+
+  const { board: nextBoard, placements, error } = applyPlacements(board, moves, rack, language);
   if (error) {
     return { valid: false, error, formedWords: [], placements: [] };
   }
@@ -201,7 +244,15 @@ export function validatePlacement(
     return { valid: false, error: "First word must cover center star", formedWords: [], placements: [] };
   }
 
-  const { words: formedWords, invalid } = collectFormedWords(nextBoard, moves, language);
+  const { words: formedWords, invalid, tooShort } = collectFormedWords(nextBoard, moves, language);
+  if (tooShort) {
+    return {
+      valid: false,
+      error: "Word must be at least 2 letters",
+      formedWords,
+      placements,
+    };
+  }
   if (invalid) {
     return {
       valid: false,

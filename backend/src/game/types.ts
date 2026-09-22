@@ -46,6 +46,8 @@ export interface GameRoom {
   maxPlayers: 2 | 3 | 4;
   createdAt: string;
   lastMoveAt: string;
+  /** Consecutive turns that scored nothing. Six ends the game. */
+  scorelessStreak: number;
 }
 
 export interface BoardCell {

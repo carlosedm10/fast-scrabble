@@ -108,12 +108,20 @@ export function HomePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm text-white/70 mb-1 block">{t("nickname")}</label>
+            <label className="text-sm text-white/70 mb-1 block" htmlFor="nickname">
+              {t("nickname")}
+            </label>
             <Input
+              id="nickname"
               placeholder={t("nicknamePlaceholder")}
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               maxLength={20}
+              autoComplete="nickname"
+              enterKeyHint="go"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleCreate();
+              }}
             />
           </div>
 
@@ -173,15 +181,21 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               placeholder={t("roomCode")}
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
               maxLength={6}
-              className="uppercase"
+              className="uppercase sm:flex-1"
+              autoCapitalize="characters"
+              enterKeyHint="go"
+              aria-label={t("roomCode")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") handleJoin();
+              }}
             />
-            <Button variant="outline" onClick={handleJoin} disabled={loading}>
+            <Button variant="outline" onClick={handleJoin} disabled={loading} className="h-11 sm:h-10">
               {t("join")}
             </Button>
           </div>

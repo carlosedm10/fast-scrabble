@@ -13,6 +13,11 @@
   box-sizing: border-box;
 }
 
+button,
+a {
+  touch-action: manipulation;
+}
+
 html {
   background: #05070d;
 }
@@ -59,6 +64,15 @@ body::before {
   justify-content: center;
 }
 
+.board-stage {
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+
 .scrabble-board {
   container-type: inline-size;
   container-name: board;
@@ -66,8 +80,7 @@ body::before {
   grid-template-columns: repeat(15, minmax(0, 1fr));
   grid-template-rows: repeat(15, minmax(0, 1fr));
   aspect-ratio: 1 / 1;
-  /* Size against the padded column, not 100vw, so leftover space stays equal. */
-  width: min(100%, calc(100dvh - 14.5rem), 600px);
+  width: min(100cqi, 100cqb, 720px);
   max-width: 100%;
   margin-inline: auto;
   gap: clamp(1px, 0.35cqi, 3px);
@@ -118,34 +131,168 @@ body::before {
   opacity: 0.72;
 }
 
-@container board (max-width: 330px) {
-  .tile-fill-points {
-    display: none;
-  }
-}
-
 @media (min-width: 640px) {
-  .scrabble-board {
-    width: min(100%, 600px, calc(100dvh - 10rem));
-  }
-
   .scrabble-cell {
     border-radius: clamp(2px, 0.3cqi, 4px);
   }
 }
 
-@media (min-width: 1024px) {
-  .scrabble-board {
-    width: min(100%, calc(100dvh - 14rem), 720px);
-    max-width: 720px;
-  }
+.landscape-scores {
+  display: none;
+}
+
+.turn-feedback {
+  min-height: 1.4rem;
+  margin-bottom: 0.2rem;
+  font-size: 0.875rem;
+}
+
+.turn-waiting {
+  margin-bottom: 0.35rem;
+}
+
+.place-hint {
+  margin-top: 0.2rem;
+}
+
+.turn-action-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.75rem 2.75rem;
+  gap: 0.5rem;
+  width: min(100%, 30rem);
+  margin: 0.65rem auto 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(23, 192, 253, 0.18);
+}
+
+.turn-action-bar .play-action,
+.turn-action-bar .turn-icon-action {
+  height: 2.75rem;
+}
+
+.turn-action-bar .turn-icon-action {
+  padding-inline: 0;
+}
+
+.recall-trial {
+  width: fit-content;
+  margin: 0.65rem auto 0;
+}
+
+.lobby-action {
+  margin-top: 0.65rem;
+}
+
+/* Device kind comes from UA/client hints + pointer capability in deviceProfile.ts.
+   Dimensions and orientation still refine each physical device layout. */
+.game-shell[data-device="phone"] {
+  padding-inline: 0.5rem;
+}
+
+.game-shell[data-device="phone"] .game-header,
+.game-shell[data-device="tablet"] .game-header {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  padding: 0.55rem 0.65rem;
+}
+
+.game-shell[data-device="phone"] .game-header > :first-child,
+.game-shell[data-device="tablet"] .game-header > :first-child {
+  flex: 1 1 auto;
+}
+
+.game-shell[data-device="phone"] .game-header > :last-child,
+.game-shell[data-device="tablet"] .game-header > :last-child {
+  flex-wrap: nowrap;
+}
+
+.game-shell[data-device="phone"] .game-header button,
+.game-shell[data-device="tablet"] .game-header button {
+  height: 2.5rem;
+}
+
+.game-shell[data-device="phone"] .game-header > :last-child > button:first-child {
+  display: none;
+}
+
+.game-shell[data-device="phone"] .game-play {
+  margin-top: 0.45rem;
+}
+
+.game-shell[data-device="phone"] .mobile-scores {
+  margin-bottom: 0.45rem;
+  gap: 0.4rem;
+}
+
+.game-shell[data-device="phone"] .mobile-scores > div {
+  min-height: 2.25rem;
+  padding-block: 0.35rem;
+}
+
+.game-shell[data-device="phone"] .place-hint {
+  margin-top: 0.25rem;
+}
+
+.game-shell[data-layout="phone-portrait"] .play-column {
+  justify-content: flex-start;
+}
+
+.game-shell[data-layout="phone-portrait"] .board-stage {
+  flex: 0 0 auto;
+  height: min(calc(100vw - 1rem), 640px);
+}
+
+.game-shell[data-layout="phone-portrait"] .rack-zone {
+  margin-top: 0.35rem;
+}
+
+.game-shell[data-device="phone"][data-compact="true"] .place-hint {
+  display: none;
+}
+
+.game-shell[data-device="phone"][data-compact="true"] .game-header {
+  padding-block: 0.4rem;
+}
+
+.game-shell[data-device="phone"][data-compact="true"] .game-header > :last-child button {
+  height: 2.25rem;
+  width: 2.25rem;
+}
+
+.game-shell[data-device="phone"][data-compact="true"] .board-stage {
+  height: min(calc(100vw - 1rem), calc(100dvh - 17rem));
+}
+
+.game-shell[data-device="phone"][data-compact="true"] .turn-action-bar {
+  margin-top: 0.35rem;
+  padding-top: 0.4rem;
+}
+
+.game-shell[data-layout="tablet-portrait"] .game-play {
+  display: flex;
+  flex-direction: column;
+}
+
+.game-shell[data-layout="tablet-portrait"] .mobile-scores {
+  display: grid;
+}
+
+.game-shell[data-layout="tablet-portrait"] aside {
+  display: none;
+}
+
+.game-shell[data-layout="tablet-portrait"] .scrabble-board {
+  max-width: 640px;
 }
 
 .tile-rack {
   position: relative;
   isolation: isolate;
   width: fit-content;
-  min-width: min(21rem, calc(100vw - 1.5rem));
+  max-width: 100%;
+  min-width: min(100%, 16rem);
   margin-inline: auto;
   padding: 0.45rem 0.75rem 0.8rem;
   pointer-events: auto;
@@ -187,16 +334,192 @@ body::before {
   position: relative;
   z-index: 1;
   min-height: 2.75rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.rack-tile button {
+  height: 2.75rem;
+  width: 2.75rem;
+}
+
+@media (max-width: 380px) {
+  .rack-tile button {
+    height: 2.35rem;
+    width: 2.35rem;
+    font-size: 0.85rem;
+  }
+}
+
+/* Phone landscape: the board owns the scarce height. The right rail is a
+   compact touch controller, not a squeezed desktop sidebar. */
+.game-shell[data-device="phone"][data-orientation="landscape"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(20rem, 45vw, 24rem);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.45rem 0.65rem;
+  width: 100%;
+  max-width: none;
+  padding: 0.25rem 0.5rem;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .game-header {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .game-header span {
+  display: none;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .game-play,
+.game-shell[data-device="phone"][data-orientation="landscape"] .play-column {
+  display: contents;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .board-stage {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  height: calc(100dvh - 0.5rem);
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .scrabble-board {
+  width: min(100cqi, 100cqb, 720px);
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .game-dock {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  padding: 0.55rem;
+  overflow: auto;
+  border: 1px solid rgba(23, 192, 253, 0.14);
+  border-radius: 0.75rem;
+  background: rgba(16, 24, 40, 0.58);
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .game-alert,
+.game-shell[data-device="tablet"][data-orientation="landscape"] .game-alert {
+  grid-column: 2;
+  grid-row: 2;
+  z-index: 2;
+  align-self: start;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .mobile-scores,
+.game-shell[data-device="phone"][data-orientation="landscape"] .place-hint,
+.game-shell[data-device="phone"][data-orientation="landscape"] aside {
+  display: none;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .landscape-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .tile-rack {
+  min-width: 0;
+  width: 100%;
+  padding: 0.2rem 0.25rem 0.4rem;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .tile-rack-tiles {
+  gap: 3px;
+  min-height: 0;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .rack-tile button {
+  height: 2rem;
+  width: 2rem;
+  font-size: 0.72rem;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .turn-action-bar {
+  grid-template-columns: minmax(0, 1fr) 2.4rem 2.4rem;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+}
+
+.game-shell[data-device="phone"][data-orientation="landscape"] .turn-action-bar .play-action,
+.game-shell[data-device="phone"][data-orientation="landscape"] .turn-action-bar .turn-icon-action {
+  height: 2.35rem;
+  font-size: 0.75rem;
+}
+
+/* iPad landscape: a two-handed tabletop. The persistent rail has room for
+   readable labels and the board gets the rest of the canvas. */
+.game-shell[data-device="tablet"][data-orientation="landscape"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(19rem, 32vw, 22rem);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem 1rem;
+  width: 100%;
+  max-width: 90rem;
+  padding: 0.75rem 1rem;
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .game-header {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .game-header span {
+  display: none;
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .game-play,
+.game-shell[data-device="tablet"][data-orientation="landscape"] .play-column {
+  display: contents;
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .board-stage {
+  grid-column: 1;
+  grid-row: 1 / 3;
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .game-dock {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: stretch;
+  padding: 1rem;
+  border: 1px solid rgba(23, 192, 253, 0.16);
+  border-radius: 1rem;
+  background: rgba(16, 24, 40, 0.62);
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .mobile-scores,
+.game-shell[data-device="tablet"][data-orientation="landscape"] aside {
+  display: none;
+}
+
+.game-shell[data-device="tablet"][data-orientation="landscape"] .landscape-scores {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* Desktop: mouse travel matters. Keep the rack directly under the board and
+   reserve the right column for persistent match information. */
+.game-shell[data-device="desktop"] {
+  max-width: 90rem;
+}
+
+.game-shell[data-device="desktop"] .game-play {
+  grid-template-columns: minmax(0, 1fr) 17.5rem;
+}
+
+.game-shell[data-device="desktop"] .game-play > aside {
+  align-self: stretch;
 }
 
 .rack-zone {
   pointer-events: none;
-}
-
-@media (max-width: 639px) {
-  .rack-zone {
-    margin-top: 1.25rem;
-  }
 }
 
 @keyframes tile-jiggle {

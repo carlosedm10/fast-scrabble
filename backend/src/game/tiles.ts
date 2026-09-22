@@ -21,13 +21,14 @@ const SPANISH_POINTS: Record<string, number> = {
   N: 1, Ñ: 8, O: 1, P: 3, Q: 8, R: 1, RR: 3, S: 1, T: 1, U: 1, V: 4, X: 8, Y: 4, Z: 10,
 };
 
-const SPANISH_FORBIDDEN_WILDCARD = new Set(["K", "W"]);
+const SPANISH_WILDCARD = new Set([
+  "A", "B", "C", "CH", "D", "E", "F", "G", "H", "I", "J", "L", "LL", "M",
+  "N", "Ñ", "O", "P", "Q", "R", "RR", "S", "T", "U", "V", "X", "Y", "Z",
+]);
 
 export function isWildcardForbidden(language: Language, letter: string): boolean {
-  const upper = letter.toUpperCase();
-  if (language === "es") {
-    return SPANISH_FORBIDDEN_WILDCARD.has(upper);
-  }
+  const upper = letter.trim().toUpperCase();
+  if (language === "es") return !SPANISH_WILDCARD.has(upper);
   return !/^[A-Z]$/.test(upper);
 }
 
