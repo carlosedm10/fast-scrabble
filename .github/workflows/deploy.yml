@@ -8,6 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -16,35 +17,59 @@ jobs:
 
       - name: Deploy to Hetzner
         env:
-          # No secrets||vars fallbacks. DEPLOY_PATH is a repository variable.
-          # DEPLOY_SSH_PORT is optional; the script defaults an empty value to 22.
+          # production environment. No secrets||vars fallbacks.
+          # DEPLOY_PATH is a constant. DEPLOY_SSH_PORT defaults to 22 when empty.
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
-          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          DEPLOY_PATH: /opt/apps/fast-scrabble
+          POSTGRES_USER: ${{ vars.POSTGRES_USER }}
+          POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           set -euo pipefail
           missing=()
           [[ -n "${DEPLOY_HOST}" ]] || missing+=(DEPLOY_HOST)
           [[ -n "${DEPLOY_USER}" ]] || missing+=(DEPLOY_USER)
           [[ -n "${DEPLOY_SSH_KEY}" ]] || missing+=(DEPLOY_SSH_KEY)
-          [[ -n "${DEPLOY_KNOWN_HOSTS}" ]] || missing+=(DEPLOY_KNOWN_HOSTS)
-          [[ -n "${DEPLOY_PATH}" ]] || missing+=(DEPLOY_PATH)
+          [[ -n "${POSTGRES_USER}" ]] || missing+=(POSTGRES_USER)
+          [[ -n "${POSTGRES_DB}" ]] || missing+=(POSTGRES_DB)
+          [[ -n "${POSTGRES_PASSWORD}" ]] || missing+=(POSTGRES_PASSWORD)
           if ((${#missing[@]} > 0)); then
             echo "Deploy configuration missing: ${missing[*]}" >&2
-            echo "Required secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS." >&2
-            echo "Required repository variable: DEPLOY_PATH." >&2
+            echo "Production environment secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, POSTGRES_PASSWORD." >&2
+            echo "Production environment variables: POSTGRES_USER, POSTGRES_DB." >&2
             echo "Optional secret: DEPLOY_SSH_PORT (defaults to 22)." >&2
             exit 1
           fi
+          for name in POSTGRES_USER POSTGRES_DB POSTGRES_PASSWORD; do
+            if [[ "${!name}" == *$'\n'* || "${!name}" == *$'\r'* ]]; then
+              echo "${name} must be a single line" >&2
+              exit 1
+            fi
+          done
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-          unset DEPLOY_KNOWN_HOSTS
           export DEPLOY_SSH_KEY=~/.ssh/deploy_key
+          umask 077
+          env_file="${RUNNER_TEMP:-/tmp}/fast-scrabble.env"
+          mkdir -p "$(dirname "$env_file")"
+          {
+            printf 'POSTGRES_USER=%s\n' "$POSTGRES_USER"
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
+            printf 'POSTGRES_DB=%s\n' "$POSTGRES_DB"
+            printf 'DATABASE_URL=postgresql://%s:%s@postgres-scrabble:5432/%s\n' \
+              "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$POSTGRES_DB"
+            printf '%s\n' \
+              'NODE_ENV=production' \
+              'PORT=8200' \
+              'BASE_PATH=/scrabble' \
+              'CORS_ORIGIN=https://games.carloseduardo.es'
+          } > "$env_file"
+          chmod 600 "$env_file"
+          export DEPLOY_ENV_FILE="$env_file"
+          unset POSTGRES_PASSWORD
           chmod +x deploy/remote-deploy.sh
           ./deploy/remote-deploy.sh

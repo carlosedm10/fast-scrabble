@@ -32,9 +32,11 @@ Rutas Caddy (`deploy/host/edge/sites/games.caddy`):
 - `/scrabble/socket.io*` → `:8200`
 - `/scrabble*` → `:3200`
 
-## Configuración de GitHub (repo `fast-scrabble`)
+## Configuración de GitHub (entorno `production`)
 
-Sin fallback `secrets || vars`. Si falta un secreto obligatorio o la variable `DEPLOY_PATH`, el workflow falla.
+El job de deploy usa el entorno `production`. Sin fallback `secrets || vars`. Si falta un secreto o una variable obligatoria, el workflow falla. La clave de host sale de `ssh-keyscan` en cada deploy.
+
+`DEPLOY_PATH` es la constante `/opt/apps/fast-scrabble` en el workflow. No es secreto ni variable.
 
 | Nombre | Tipo | Valor |
 |---|---|---|
@@ -42,16 +44,15 @@ Sin fallback `secrets || vars`. Si falta un secreto obligatorio o la variable `D
 | `DEPLOY_USER` | secret | `deploy` |
 | `DEPLOY_SSH_KEY` | secret | misma clave privada que wedding (`~/.ssh/wedding_deploy`) |
 | `DEPLOY_SSH_PORT` | secret, opcional | vacío significa `22` |
-| `DEPLOY_KNOWN_HOSTS` | secret | líneas `known_hosts` del VPS; el workflow las escribe en `~/.ssh/known_hosts` y no ejecuta `ssh-keyscan` |
-| `DEPLOY_PATH` | variable de repositorio | `/opt/apps/fast-scrabble` |
+| `POSTGRES_PASSWORD` | secret | contraseña de Postgres |
+| `POSTGRES_USER` | variable | usuario de Postgres (`scrabble`) |
+| `POSTGRES_DB` | variable | base de datos (`scrabble`) |
 
-`DEPLOY_KNOWN_HOSTS` tiene que coincidir con el host y el puerto al que se conecta el SSH (`host key-type key`, o `[host]:port` si el puerto no es 22). Se captura una vez y se guarda como secreto.
-
-`POSTGRES_PASSWORD`, `SECRET_KEY` y el resto de secretos de la app viven solo en el `.env` del servidor. El deploy no los escribe.
+El workflow escribe el `.env` del servidor con esas tres claves de Postgres, más `DATABASE_URL` (la compone, no hay que definirla), `NODE_ENV=production`, `PORT=8200`, `BASE_PATH=/scrabble` y `CORS_ORIGIN=https://games.carloseduardo.es`. No imprime el contenido.
 
 El workflow `.github/workflows/deploy.yml` se ejecuta en push a `main` (o manualmente).
 
-Deploy manual (usa el `known_hosts` de esa máquina; el workflow usa el secreto):
+Deploy manual (el `.env` del servidor se conserva si no pasas `DEPLOY_ENV_FILE`):
 
 ```bash
 export DEPLOY_HOST=167.233.36.55
@@ -59,19 +60,15 @@ export DEPLOY_USER=deploy
 export DEPLOY_SSH_KEY=~/.ssh/wedding_deploy
 export DEPLOY_PATH=/opt/apps/fast-scrabble
 # export DEPLOY_SSH_PORT=22
+# export DEPLOY_ENV_FILE=/ruta/al/env/renderizado
 ./deploy/remote-deploy.sh
 ```
 
 ## Checklist primera vez en el servidor
 
 1. Crear directorio: `sudo mkdir -p /opt/apps/fast-scrabble && sudo chown deploy:deploy /opt/apps/fast-scrabble`
-2. Copiar plantilla de entorno:
-   ```bash
-   cd /opt/apps/fast-scrabble
-   cp deploy/env.production.example .env
-   nano .env   # contraseñas y SECRET_KEY
-   ```
-3. Levantar stack: `docker compose -f compose.prod.yaml up --build -d`
+2. Definir los secretos y variables del entorno `production` (el workflow escribe `.env` en el deploy).
+3. Levantar stack: `docker compose -f compose.prod.yaml up --build -d` (hace falta un `.env` ya escrito, o lanzar el workflow)
 4. Verificar puertos locales: `curl -s http://127.0.0.1:8200/scrabble/api/health` y `curl -sI http://127.0.0.1:3200/scrabble/`
 5. Instalar site Caddy (o dejar que `remote-deploy.sh` lo haga):
    ```bash
@@ -82,27 +79,26 @@ export DEPLOY_PATH=/opt/apps/fast-scrabble
 
 ## Qué hace `deploy/remote-deploy.sh`
 
-1. `rsync` del repo al servidor (excluye `.git`, `node_modules`, `.env`)
-2. `docker compose -f compose.prod.yaml up --build -d --force-recreate`
-3. Copia `deploy/host/edge/sites/games.caddy` → `/opt/apps/edge/sites/`
-4. Recarga Caddy en `/opt/apps/edge`
+1. `ssh-keyscan` del host de deploy
+2. `rsync` del repo al servidor (excluye `.git`, `node_modules`, `.env`)
+3. Si hay `DEPLOY_ENV_FILE`, lo instala como `.env` del servidor (modo `600`)
+4. `docker compose -f compose.prod.yaml up --build -d --force-recreate`
+5. Copia `deploy/host/edge/sites/games.caddy` → `/opt/apps/edge/sites/`
+6. Recarga Caddy en `/opt/apps/edge`
 
 ## `.env` de producción
 
-Plantilla: `deploy/env.production.example` (nunca commitear `.env`).
-
-Variables clave:
+Lo escribe el workflow en cada deploy. La forma está en `deploy/env.production.example` (nunca commitear `.env`).
 
 ```
 POSTGRES_USER=...
 POSTGRES_PASSWORD=...
 POSTGRES_DB=scrabble
 DATABASE_URL=postgresql://...@postgres-scrabble:5432/scrabble
-SECRET_KEY=...
+NODE_ENV=production
 PORT=8200
 BASE_PATH=/scrabble
 CORS_ORIGIN=https://games.carloseduardo.es
-NODE_ENV=production
 ```
 
 `compose.prod.yaml` expone solo en loopback (`127.0.0.1:3200`, `127.0.0.1:8200`); Caddy en el edge enruta el tráfico público.
