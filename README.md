@@ -39,5 +39,6 @@ Open http://localhost:3000/scrabble/
 ## Secrets (you configure)
 
 - Local: copy `.env_template` → `.env`
-- CI deploy: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`
+- CI deploy secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`; optional `DEPLOY_SSH_PORT` (default 22)
+- CI deploy variable: `DEPLOY_PATH` (`/opt/apps/fast-scrabble`)
 - VM: production `.env` with real `POSTGRES_PASSWORD`, `SECRET_KEY`

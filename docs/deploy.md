@@ -32,24 +32,33 @@ Rutas Caddy (`deploy/host/edge/sites/games.caddy`):
 - `/scrabble/socket.io*` → `:8200`
 - `/scrabble*` → `:3200`
 
-## Secretos GitHub (repo `fast-scrabble`)
+## Configuración de GitHub (repo `fast-scrabble`)
 
-| Secret | Valor |
-|---|---|
-| `DEPLOY_HOST` | `167.233.36.55` |
-| `DEPLOY_USER` | `deploy` |
-| `DEPLOY_SSH_KEY` | misma clave privada que wedding (`~/.ssh/wedding_deploy`) |
-| `DEPLOY_PATH` | `/opt/apps/fast-scrabble` |
+Sin fallback `secrets || vars`. Si falta un secreto obligatorio o la variable `DEPLOY_PATH`, el workflow falla.
 
-El workflow `.github/workflows/deploy.yml` se ejecuta en push a `main` (o manualmente). Si faltan secretos, omite el deploy remoto.
+| Nombre | Tipo | Valor |
+|---|---|---|
+| `DEPLOY_HOST` | secret | `167.233.36.55` |
+| `DEPLOY_USER` | secret | `deploy` |
+| `DEPLOY_SSH_KEY` | secret | misma clave privada que wedding (`~/.ssh/wedding_deploy`) |
+| `DEPLOY_SSH_PORT` | secret, opcional | vacío significa `22` |
+| `DEPLOY_KNOWN_HOSTS` | secret | líneas `known_hosts` del VPS; el workflow las escribe en `~/.ssh/known_hosts` y no ejecuta `ssh-keyscan` |
+| `DEPLOY_PATH` | variable de repositorio | `/opt/apps/fast-scrabble` |
 
-Deploy manual (mismas variables de entorno):
+`DEPLOY_KNOWN_HOSTS` tiene que coincidir con el host y el puerto al que se conecta el SSH (`host key-type key`, o `[host]:port` si el puerto no es 22). Se captura una vez y se guarda como secreto.
+
+`POSTGRES_PASSWORD`, `SECRET_KEY` y el resto de secretos de la app viven solo en el `.env` del servidor. El deploy no los escribe.
+
+El workflow `.github/workflows/deploy.yml` se ejecuta en push a `main` (o manualmente).
+
+Deploy manual (usa el `known_hosts` de esa máquina; el workflow usa el secreto):
 
 ```bash
 export DEPLOY_HOST=167.233.36.55
 export DEPLOY_USER=deploy
 export DEPLOY_SSH_KEY=~/.ssh/wedding_deploy
 export DEPLOY_PATH=/opt/apps/fast-scrabble
+# export DEPLOY_SSH_PORT=22
 ./deploy/remote-deploy.sh
 ```
 

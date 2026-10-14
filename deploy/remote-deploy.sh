@@ -3,17 +3,25 @@ set -euo pipefail
 
 DEPLOY_HOST="${DEPLOY_HOST:?DEPLOY_HOST is required}"
 DEPLOY_USER="${DEPLOY_USER:?DEPLOY_USER is required}"
-DEPLOY_PATH="${DEPLOY_PATH:-/opt/apps/fast-scrabble}"
+DEPLOY_PATH="${DEPLOY_PATH:?DEPLOY_PATH is required}"
+DEPLOY_SSH_PORT="${DEPLOY_SSH_PORT:-22}"
 EDGE_PATH="${EDGE_PATH:-/opt/apps/edge}"
 CADDY_SITE="games.caddy"
 SSH_KEY="${DEPLOY_SSH_KEY:-}"
 
-SSH_OPTS=(-o StrictHostKeyChecking=accept-new)
+# Trust only the known_hosts file the workflow wrote from DEPLOY_KNOWN_HOSTS.
+SSH_OPTS=(
+  -p "$DEPLOY_SSH_PORT"
+  -o BatchMode=yes
+  -o StrictHostKeyChecking=yes
+  -o UserKnownHostsFile="${HOME}/.ssh/known_hosts"
+  -o GlobalKnownHostsFile=/dev/null
+)
 if [[ -n "$SSH_KEY" ]]; then
-  SSH_OPTS+=(-i "$SSH_KEY")
+  SSH_OPTS+=(-i "$SSH_KEY" -o IdentitiesOnly=yes)
 fi
 
-echo "==> Syncing to ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}"
+echo "==> Syncing to ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH} (port ${DEPLOY_SSH_PORT})"
 rsync -avz --delete \
   --exclude '.git' \
   --exclude 'node_modules' \
