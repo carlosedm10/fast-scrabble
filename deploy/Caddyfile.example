@@ -1,0 +1,22 @@
+# Reverse proxy for compose.prod.yaml, which listens on 127.0.0.1:3200
+# (frontend) and 127.0.0.1:8200 (API and Socket.IO). Caddy gets the TLS
+# certificate. Replace the hostname with your PUBLIC_HOST.
+
+scrabble.example.com {
+	# Vite base is /scrabble/; the bare path is a 404 in vite preview
+	@bareScrabble path /scrabble
+	redir @bareScrabble /scrabble/ 308
+	redir / /scrabble/ 302
+
+	handle /scrabble/api* {
+		reverse_proxy 127.0.0.1:8200
+	}
+
+	handle /scrabble/socket.io* {
+		reverse_proxy 127.0.0.1:8200
+	}
+
+	handle /scrabble* {
+		reverse_proxy 127.0.0.1:3200
+	}
+}

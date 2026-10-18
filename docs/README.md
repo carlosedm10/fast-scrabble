@@ -59,11 +59,11 @@ create/join room → Socket.IO room:* events → game engine validates → Postg
 
 - **FISE Spanish bag**: 100 tiles, Ñ included, no K/W, CH/LL/RR as single tiles, 2 blanks (cannot represent K/W).
 - **Dictionary copyright**: Open word lists (not DRAE/CSW). Spanish is accent-folded except Ñ. See `backend/src/game/lexicon/`.
-- **Base path `/scrabble/`**: Required for shared `games.carloseduardo.es` host behind Caddy.
+- **Base path `/scrabble/`**: Lets the game share a hostname with other apps behind one reverse proxy.
 
 ## Where the details live
 
 - Game engine: `backend/src/game/`
 - Socket handlers: `backend/src/socket.ts`
-- Deploy: `docs/deploy.md`, `docs/server.md`
-- Caddy site: `deploy/host/edge/sites/games.caddy`
+- Deploy: `docs/deploy.md`
+- Caddy example: `deploy/Caddyfile.example`
