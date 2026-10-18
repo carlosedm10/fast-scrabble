@@ -2,7 +2,6 @@
 
 Real-time multiplayer Scrabble — Spanish (FISE) and English rules, 2–4 players, no accounts.
 
-**Play at:** `https://games.carloseduardo.es/scrabble/` (when deployed)
 
 ## Quick start
 
@@ -28,16 +27,19 @@ Open http://localhost:3000/scrabble/
 
 - **Frontend:** Vite + React + TypeScript + Tailwind + shadcn-style components
 - **Backend:** Bun + Fastify + Socket.IO + Postgres 16
-- **Deploy:** Docker Compose on Hetzner, Caddy edge proxy
+- **Deploy:** Docker Compose behind any TLS reverse proxy (Caddy example included)
 
 ## Docs
 
 - [docs/README.md](docs/README.md) — architecture and game rules
-- [docs/deploy.md](docs/deploy.md) — production deploy
+- [docs/deploy.md](docs/deploy.md) — host it yourself
 - [AGENTS.md](AGENTS.md) — agent/developer orientation
 
 ## Secrets (you configure)
 
 - Local: copy `.env_template` → `.env`
-- CI deploy: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`
-- VM: production `.env` with real `POSTGRES_PASSWORD`, `SECRET_KEY`
+- Production: copy `deploy/env.production.example` → `.env` and set `PUBLIC_HOST`, `POSTGRES_PASSWORD` and `SECRET_KEY`
+
+## License
+
+[Apache 2.0](LICENSE)

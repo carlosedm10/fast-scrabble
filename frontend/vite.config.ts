@@ -5,6 +5,12 @@ import path from "path";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 const APP_BASE = "/scrabble/";
+
+/** `vite preview` rejects unknown Host headers. Production sets PREVIEW_ALLOWED_HOSTS to its domain. */
+const PREVIEW_ALLOWED_HOSTS = (process.env.PREVIEW_ALLOWED_HOSTS ?? "")
+  .split(",")
+  .map((host) => host.trim())
+  .filter(Boolean);
 const BARE_BASE = APP_BASE.slice(0, -1);
 
 /** Vite's base middleware 404s `/scrabble` (no slash). Redirect before it runs. */
@@ -59,7 +65,7 @@ export default defineConfig({
   preview: {
     host: true,
     port: 5173,
-    allowedHosts: ["games.carloseduardo.es", "localhost"],
+    allowedHosts: [...PREVIEW_ALLOWED_HOSTS, "localhost"],
   },
   server: {
     host: true,

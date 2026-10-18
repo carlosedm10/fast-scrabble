@@ -1,99 +1,82 @@
-# Deploy — fast-scrabble
+# Host it yourself
 
-Producción en el VPS Hetzner (`167.233.36.55`), servido en `https://games.carloseduardo.es/scrabble/`.
-
-## Layout del servidor
-
-```
-/opt/apps/
-  edge/                    ← Caddy compartido (80/443)
-  wedding-invitations/     ← :3100 / :8100
-  fast-scrabble/           ← :3200 / :8200
-```
-
-| App | Frontend | Backend | Path |
-|---|---|---|---|
-| wedding-invitations | 3100 | 8100 | `/` |
-| **fast-scrabble** | **3200** | **8200** | `/scrabble` |
-
-## Arquitectura
+fast-scrabble runs as three containers from `compose.prod.yaml`: the
+frontend (Vite preview), the backend (Bun, Fastify, Socket.IO) and
+Postgres 16. Both app ports bind to `127.0.0.1` only, so you need a reverse
+proxy in front for TLS. Everything is served under `/scrabble/`.
 
 ```
-Browser → Caddy (edge) → 127.0.0.1:3200 (frontend)
-                      → 127.0.0.1:8200 (backend API + Socket.IO)
-                      → Postgres (red interna compose)
+Browser → reverse proxy (TLS) → 127.0.0.1:3200  frontend
+                              → 127.0.0.1:8200  API + Socket.IO
+                                 Postgres on the compose network only
 ```
 
-Rutas Caddy (`deploy/host/edge/sites/games.caddy`):
+## Requirements
 
-- `/scrabble` → 308 `/scrabble/` (Vite `base` requires the trailing slash)
-- `/` → 302 `/scrabble/`
-- `/scrabble/api*` → `:8200`
-- `/scrabble/socket.io*` → `:8200`
-- `/scrabble*` → `:3200`
+- A Linux host with Docker and the Compose plugin
+- A DNS name pointing at it, for example `scrabble.example.com`
+- Ports 80 and 443 open for the proxy
 
-## Secretos GitHub (repo `fast-scrabble`)
+## Steps
 
-| Secret | Valor |
-|---|---|
-| `DEPLOY_HOST` | `167.233.36.55` |
-| `DEPLOY_USER` | `deploy` |
-| `DEPLOY_SSH_KEY` | misma clave privada que wedding (`~/.ssh/wedding_deploy`) |
-| `DEPLOY_PATH` | `/opt/apps/fast-scrabble` |
+1. Get the code onto the host:
 
-El workflow `.github/workflows/deploy.yml` se ejecuta en push a `main` (o manualmente). Si faltan secretos, omite el deploy remoto.
+   ```bash
+   git clone https://github.com/carlosedm10/fast-scrabble.git
+   cd fast-scrabble
+   ```
 
-Deploy manual (mismas variables de entorno):
+2. Create `.env` from the production template and fill it in:
+
+   ```bash
+   cp deploy/env.production.example .env
+   ```
+
+   - `PUBLIC_HOST`: your hostname, without `https://`
+   - `POSTGRES_PASSWORD` and the same password inside `DATABASE_URL`
+   - `SECRET_KEY`: a long random string, e.g. `openssl rand -hex 32`
+   - `CORS_ORIGIN`: `https://` plus `PUBLIC_HOST`
+
+   Never commit `.env`.
+
+3. Build and start:
+
+   ```bash
+   make prod-up
+   ```
+
+4. Check the local ports:
+
+   ```bash
+   curl -s http://127.0.0.1:8200/scrabble/api/health
+   curl -sI http://127.0.0.1:3200/scrabble/
+   ```
+
+5. Put a reverse proxy in front. With Caddy, copy
+   `deploy/Caddyfile.example`, replace `scrabble.example.com` with your
+   `PUBLIC_HOST`, and reload Caddy. Any proxy works if it:
+
+   - redirects `/scrabble` to `/scrabble/` (Vite preview 404s the bare path)
+   - sends `/scrabble/api*` and `/scrabble/socket.io*` to `127.0.0.1:8200`,
+     with WebSocket upgrades
+   - sends the rest of `/scrabble*` to `127.0.0.1:3200`
+
+6. Open `https://<PUBLIC_HOST>/scrabble/`.
+
+## Updating
 
 ```bash
-export DEPLOY_HOST=167.233.36.55
-export DEPLOY_USER=deploy
-export DEPLOY_SSH_KEY=~/.ssh/wedding_deploy
-export DEPLOY_PATH=/opt/apps/fast-scrabble
-./deploy/remote-deploy.sh
+git pull
+make prod-up
 ```
 
-## Checklist primera vez en el servidor
+`make prod-up` rebuilds the images and recreates the containers. The
+Postgres volume `postgres_data_scrabble` keeps the data.
 
-1. Crear directorio: `sudo mkdir -p /opt/apps/fast-scrabble && sudo chown deploy:deploy /opt/apps/fast-scrabble`
-2. Copiar plantilla de entorno:
-   ```bash
-   cd /opt/apps/fast-scrabble
-   cp deploy/env.production.example .env
-   nano .env   # contraseñas y SECRET_KEY
-   ```
-3. Levantar stack: `docker compose -f compose.prod.yaml up --build -d`
-4. Verificar puertos locales: `curl -s http://127.0.0.1:8200/scrabble/api/health` y `curl -sI http://127.0.0.1:3200/scrabble/`
-5. Instalar site Caddy (o dejar que `remote-deploy.sh` lo haga):
-   ```bash
-   install -D -m 644 deploy/host/edge/sites/games.caddy /opt/apps/edge/sites/games.caddy
-   cd /opt/apps/edge && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile
-   ```
-6. Probar: `https://games.carloseduardo.es/scrabble/` (bare `/scrabble` 308s here)
+## Backups
 
-## Qué hace `deploy/remote-deploy.sh`
+Dump the database from the running container:
 
-1. `rsync` del repo al servidor (excluye `.git`, `node_modules`, `.env`)
-2. `docker compose -f compose.prod.yaml up --build -d --force-recreate`
-3. Copia `deploy/host/edge/sites/games.caddy` → `/opt/apps/edge/sites/`
-4. Recarga Caddy en `/opt/apps/edge`
-
-## `.env` de producción
-
-Plantilla: `deploy/env.production.example` (nunca commitear `.env`).
-
-Variables clave:
-
+```bash
+docker exec scrabble_db pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom > scrabble.dump
 ```
-POSTGRES_USER=...
-POSTGRES_PASSWORD=...
-POSTGRES_DB=scrabble
-DATABASE_URL=postgresql://...@postgres-scrabble:5432/scrabble
-SECRET_KEY=...
-PORT=8200
-BASE_PATH=/scrabble
-CORS_ORIGIN=https://games.carloseduardo.es
-NODE_ENV=production
-```
-
-`compose.prod.yaml` expone solo en loopback (`127.0.0.1:3200`, `127.0.0.1:8200`); Caddy en el edge enruta el tráfico público.
